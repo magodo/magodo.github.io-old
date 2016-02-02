@@ -249,3 +249,132 @@ __mapping variables to memory__
 * _Local static variables_: Same as _Global variables_.
 
 
+# synchronizing threads with semaphores
+
+__machine instrcution interleave__
+
+When peer threads run concurrently on a uniprocessor, the _machine instructions_ are completed one after the other in some order. This will cause nasty synchronizing errors.
+
+For example:
+
+{% highlight C linenos %}
+volatile int cnt = 0;    // "volatile" is necessary for global variables shared by threads
+
+void main(){
+    int niters = 100;
+    ...
+    pthread_create(&tid1, NULL, thread, &niters);
+    pthread_create(&tid2, NULL, thread, &niters);
+    pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
+    ...
+}
+
+void *thread(void *vargp){
+    int i, niters = *((int*)vargp);
+
+    for (i = 0; i < niters; i++)
+        cnt++;
+
+    return NULL;
+}
+{% endhighlight %}
+
+In this case, the resulting _cnt_ is not ensured to be `2 * niters`. This is because, the for loop body in line 17 consists of 3 _machine instructions_ (load, update, store). _In general, there is no way for you to predict wether the operating system will choose a correct ordering for your threds._
+
+__progress graph__
+
+A _progress graph_ models the execution of _n_ concurrent threads as a trajectory through an _n_-dimensional Cartesian space. Each axis _k_ corresponds to the progress of thread _k_. Each point represents the state where the corresponding thread has completed last instruction. The origin of the graph corresponds to the _initial state_ where none of the threads has yet completed an instruction.
+
+A progress graph models instruction execution as a _transition_ from one state to another. A transition is represented as a directed edge from one point to an adjacent point. Legal transitions move to the right or up. The execution history of a program is modeled as a _trajectory_ through the state space.
+
+Following is an example _trajectory_ of code above:
+
+![trajectory1](/images/concurrent-programming/trajectory1.png)
+
+In this case, for thread _i_, the instructions (L<sub>i</sub>, U<sub>i</sub>, S<sub>i</sub>) that manipulate the contents of the shared variable _cnt_ consitute a _critical section_ that should not be interleaved with the critical section of the other thread. The phenomenon in general is known as _mutual exclusion_.
+
+![trajectory2](/images/concurrent-programming/trajectory2.png)
+
+In order to guarantee correct execution of concurrent program that shares global data structures, we must _synchronize_ the threads so that they always have a safe trajectory.
+
+__Semaphore Introduction__
+
+A semaphore, _s_, is a global variable with a _nonnegative_ integer value that can only be manipulated by two special operations, called _P_ and _V_:
+
+* _P_(s): 
+    * If _s_ is nonzero, _P_ decrements _s_ and returns immediately;
+    * If _s_ is zero, then suspend the thread until _s_ becomes nonzero and the process is restarted by a _V_ operation. After restarting, the _P_ operation decrements _s_ and returns.
+
+* _V_(s): increment _s_ by 1
+
+NOTE:
+
+  * The test and decrement operations in _P_ occur indivisibly;
+  * The increment operation in_V_ occurs indivisibly;
+  * _V does not_ define the order in wihch waiting threads are restarted. Thus, when several threads are waiting at a semaphore, you cannot predict which one will be restarted as a result of the V.
+
+The semaphore ensures a running program can never enter a state where a properly initialized semaphore has a negative value. This property, known as the _semaphore invariant_, provides a powerful tool for controlling the trajectories of concurrent programs.
+
+The Posix standard defines a variety of functions for semaphores:
+
+    # include <semaphore.h>
+
+    int sem_init(sem_t *sem, 0, unsigned int value);
+    int sem_wait(sem_t *s);    /* P(s) */
+    int sem_post(sem_t *s);    /* V(s) */
+
+__Use semaphore for mutual exclusion__
+
+The basic idea is to associate a semaphore _s_, initially 1, with each shared variable (or related set of shared variables) and then surround the correspoding critical section with _P_(s) and _V_(s) operations.
+
+A semaphore that is used in this way to protect shared variables is called a _binary semaphore_ because its value is always 0 or 1. Binary semaphores whose purpose is to provide mutual exclusion, AKA _mutexes_.
+
+  * Performing a _P_ operation on a mutex is called _locking_ the mutex
+  * Performing a _V_ operation on a mutex is called _unlocking_ the mutex
+  * A semaphore that is used as a counter for a set of available resources is called a _counting semaphore_
+
+Use this method, we could ensure the _cnt example_ above to make the critical region as a forbidden area on progress graph, which ensures it is impossible for multiple threads to be executing instructions in the enclosed critical region at any point in time. In other words, the semaphore operations ensure mutually exclusive access to the shared resources. 
+
+The code should be changed to:
+
+{% highlight C linenos %}
+volatile int cnt = 0;    // "volatile" is necessary for global variables shared by threads
+sem_t mutex_cnt;         // 1. Semaphore that protects counter
+
+void main(){
+    int niters = 100;
+    ...
+    sem_init(&mutex_cnt, 0, 1);   // 2. mutext_cnt = 1
+    ...
+    pthread_create(&tid1, NULL, thread, &niters);
+    pthread_create(&tid2, NULL, thread, &niters);
+    pthread_join(tid1, NULL);
+    pthread_join(tid2, NULL);
+    ...
+}
+
+void *thread(void *vargp){
+    int i, niters = *((int*)vargp);
+
+    for (i = 0; i < niters; i++){
+        sem_wait(&mutex_cnt);     // 3. P
+        cnt++;
+        sem_post(&mutext_cnt);    // 4. V
+    }
+    return NULL;
+}
+{% endhighlight %}
+
+With changes above, we could get following _progress graph_ with _forbidden region_ that surrounds the unsafe region:
+
+![trajectory3](/images/concurrent-programming/trajectory3.png)
+
+
+__Use semaphore to schedule shared resources__
+
+A thread could use semaphore operation to notify another thread that some condition in the program state has become true.
+
+
+
+
