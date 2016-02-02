@@ -214,9 +214,9 @@ The `pthread_once` function allows you to initialize the state associated with a
 
 The *once_control* is a global or static variable that is always initialized to `PTHREAD_ONCE_INIT`. 
 
-The first time you call `pthread_once` with an argument of *once_control*, it invokes `init_routine`, which is a function with _no_ input arguments that returning nothing(it is always used to define some global variables).
+The first time any thread in a process call `pthread_once` with an argument of *once_control*, it invokes `init_routine`, which is a function with _no_ input arguments that returning nothing(it is always used to define some global variables).
 
-Subsequent calls to `pthread_once` with the same *once_control* variable do nothing. 
+Subsequent calls from any other threads inside this process to `pthread_once` with the same *once_control* variable do nothing. 
 
 # Share variables in thread programs
 
@@ -374,6 +374,15 @@ With changes above, we could get following _progress graph_ with _forbidden regi
 __Use semaphore to schedule shared resources__
 
 A thread could use semaphore operation to notify another thread that some condition in the program state has become true.
+
+# using threads for parallelism
+
+The set of all programs can be partitioned into the disjoint set of _sequential_ and _concurrent_ programs.
+
+* A sequential program is of a single logical flow
+* A concurrent program is of multiple concurrent flows. A parallel program is a concurrent program running on multiple processors
+
+
 
 
 
