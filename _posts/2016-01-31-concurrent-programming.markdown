@@ -41,6 +41,8 @@ Mordern OS provide 3 basic approach for building concurrent programs
     * [use semaphore for mutual exclusion](#title_3_3_4)
     * [use semaphore to schedule shared resource](#title_3_3_5)
   * [Use thread for parallelism](#title_3_4)
+* [Concurrency Issues](#title_4)
+  * [Thread safety](#title_4_1)
 
 
 ## <a name="title_1"></a>Concurrent programming with __Process__
@@ -420,4 +422,55 @@ The set of all programs can be partitioned into the disjoint set of _sequential_
 
 * A sequential program is of a single logical flow
 * A concurrent program is of multiple concurrent flows. A parallel program is a concurrent program running on multiple processors
+
+##<a name="title_4"></a>Concurrency Issues
+
+# <a name="title_4_1"></a>Thread safety
+
+A function is said to be _thead-safe_ if and only if it will always produce correct results when called repeatedly from one or multiple concurrent threads
+
+Normally, there are four classes of _thread-unsafe_ functions:
+
+* _Class 1: Functions that do not protect shared variables_
+
+  **Fix**
+
+  - Option1: Rewrite the **callee** function with a mutex to protect the shared variables with synchronization operations such as _P_ and _V_
+
+  - Option2: Rewrite the **caller** function to associate a mutex with the callee function to protect the shared variables
+
+<b></b>
+
+* _Class 2: Functions that keep state in some static variables(e.g. variables in .data section) across multiple invocations_
+
+  **Fix**
+
+  - Rewrite the **callee** and **caller** function so that **callee** function don't use any static data, relying instead on the **caller** to pass state information in arguments.
+
+<b></b>
+
+* _Class 3: Functions that return a pointer to a static variable_
+
+  **Fix**
+
+  - Option1: Rewrite the **callee** and **caller** function so that **caller** function pass the address of the variable to **callee** in which to store the results.
+
+  - Option2: Write a thread-safe wrapper function using  _lock-and-copy_ technique and replace all calls in **caller** function to the thread-unsafe function with calls to the wrapper. The basic idea of _lock-and-copy_ technique is to associate a mutex with the thread-unsafe function. At each call, lock the mutex, call the thread-unsafe function, copy the result returned by function to a thread-private memory location, and then unlock the mutex. 
+
+<b></b>
+
+* _Class 4: Functions that call thread-unsafe functions_
+
+  If a function _f_ calls a thread-unsafe function _g_, it depends:
+
+  - _g_ is _Class 1_ or _Class 3_
+
+    _f_ could use mutex for invoking _g_ to make _f_ itself to be thread-safe
+
+  - _g_ is _Class 2_
+
+    Only when _g_ is rewritten to be thread-safe, otherwise, _f_ is thread-unsafe
+
+
+
 
