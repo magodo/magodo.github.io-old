@@ -3,10 +3,11 @@ layout: "post"
 title: "Concurrent Porgramming"
 ---
 
-> Introducing concurrent programming concept and highlight some key points
+> This post introduce concurrent programming concept and highlight some key points
 <!--excerpt-->
 
-# Mordern OS provide 3 basic approach for building concurrent programs
+
+Mordern OS provide 3 basic approach for building concurrent programs
 
 1. Process
   * each logical control flow is a process
@@ -21,7 +22,28 @@ title: "Concurrent Porgramming"
 3. Threads
   * think of threads as a hybrid of the other two approcheas: scheduled by kernel, sharing the same virtual address space
 
-## Concurrent programming with __Process__
+* [Concurrent Programming with Process](#title_1)
+* [Concurrent Programming with I/O Multiplexing](#title_2)
+* [Concurrent Programming with Thread](#title_3)
+  * [Introduce thread](#title_3_1)
+    * [general introduce](#title_3_1_1)
+    * [thread creation](#title_3_1_2)
+    * [thread termination](#title_3_1_3)
+    * [thread repeatedly termination](#title_3_1_4)
+    * [thread detach](#title_3_1_5)
+    * [thread initialization](#title_3_1_6)
+  * [Share variables in thread programs](#title_3_2)
+    * [mapping variables to memory](#title_3_2_1)
+  * [Synchronize thread with thread](#title_3_3)
+    * [machine level interleave](#title_3_3_1)
+    * [progress graph](#title_3_3_2)
+    * [semaphore introduction](#title_3_3_3)
+    * [use semaphore for mutual exclusion](#title_3_3_4)
+    * [use semaphore to schedule shared resource](#title_3_3_5)
+  * [Use thread for parallelism](#title_3_4)
+
+
+## <a name="title_1"></a>Concurrent programming with __Process__
 
 __NOTE__
 
@@ -37,7 +59,7 @@ __Pros & Cons__
     - Have separate address space, which is more difficult to share state information. To share information, they must use explicit IPC mechanisms
     - Tends to be slower because the overhead for process control and IPC is high
 
-## Concurrent programming with __I/O Multiplexing__
+## <a name="title_2"></a>Concurrent programming with __I/O Multiplexing__
 
 The basic idea is to use the `select` function to ask the kernel to suspend the process, returing control to the application only after one or more I/O events have occured, as in the following examples:
 
@@ -71,11 +93,14 @@ __Pros & Cons__
 * Cons:
     - Coding complexity
 
-## Concurrent programming with __Threads__
 
-# Introducing thread
+## <a name="title_3"></a>Concurrent programming with __Threads__
 
-__General Introduction__
+# <a name="title_3_1"></a>Introducing thread
+
+
+
+<a name="title_3_1_1"></a>__General Introduction__
 
 * The threads are scheduled by kernel
 * Each thread has its own _thread context_, including a unique integer _thread ID_(TID), stack, stack pointer, program counter, general-purpose registers and condition codes
@@ -83,7 +108,8 @@ __General Introduction__
 * _main thread_ is the first thread to run in the process,  _peer threads_  are the following created threads. Together they form a _pool_ of peers, independent of which threads were created by which other threads
 * The code and local data for a thread is encapsulated in a _thread routine_, it takes a generic pointer as input and returns a generic pointer
 
-__Thread creation__
+
+<a name="title_3_1_2"></a>__Thread creation__
 
 New thread is created via calling `pthread_create`:
 
@@ -149,7 +175,8 @@ void *thread(void *vargp){
 
 {% endhighlight %}
 
-__Thread termiation__
+
+ a name="title_3_1_3"></a>__Thread termiation__
 
 A thread terminates in one of the following ways:
 
@@ -171,7 +198,8 @@ A thread terminates in one of the following ways:
 
     int pthread_cancel(pthread_t tid);
 
-__Thread repeatedly termination__
+
+<a name="title_3_1_4"></a>__Thread repeatedly termination__
 
 Threads wait for other threads to terminate by calling the `pthread_join` function:
 
@@ -183,7 +211,8 @@ The `thread_join` function blocks until thread _tid_ terminates, assigns the gen
 
 Note: unlike Unix `wait` function, the `pthread_join` function can only wait for a _specific_ thread to terminiate. There is no way to instruct `pthread_wait` to wait for an _arbitrary_ thread to terminate.
 
-__Thread detachment__
+
+<a name="title_3_1_5"></a>__Thread detachment__
 
 At any point in time, a thread is _joinable_ or _detached_.
 
@@ -201,7 +230,8 @@ or
 
     int pthread_detach(pthread_t tid);
 
-__Thread initialization__
+
+<a name="title_3_1_6"></a>__Thread initialization__
 
 The `pthread_once` function allows you to initialize the state associated with a thread routine.
 
@@ -218,7 +248,8 @@ The first time any thread in a process call `pthread_once` with an argument of *
 
 Subsequent calls from any other threads inside this process to `pthread_once` with the same *once_control* variable do nothing. 
 
-# Share variables in thread programs
+
+# <a name="title_3_2"></a>Share variables in thread programs
 
 The variable is _shared_ if and only if multiple threads reference some instance of the variable.
 
@@ -242,16 +273,19 @@ Each thread shares the rest of the process context with the other threads, which
 
 In operational sense, it is impossible for one thread to read or write the register values of another thread; On the other hand, any thread can access any location in the shared VM (including other threads' stack). Thus, registers are never shared, whereas VM is always shared(stack is not clean).
 
-__mapping variables to memory__
+
+<a name="title_3_2_1"></a>__mapping variables to memory__
 
 * _Global variables_: At run time, the r/w area of VM contains exactly one instance of each global variables that can be referenced by any thread.
 * _Local automatic variables_: At run time, each thread's stack contain its own instance of any local automatic variables.
 * _Local static variables_: Same as _Global variables_.
 
 
-# synchronizing threads with semaphores
 
-__machine instrcution interleave__
+# <a name="title_3_3"></a>synchronizing threads with semaphores
+
+
+<a name="title_3_3_1"></a>__machine instrcution interleave__
 
 When peer threads run concurrently on a uniprocessor, the _machine instructions_ are completed one after the other in some order. This will cause nasty synchronizing errors.
 
@@ -282,7 +316,8 @@ void *thread(void *vargp){
 
 In this case, the resulting _cnt_ is not ensured to be `2 * niters`. This is because, the for loop body in line 17 consists of 3 _machine instructions_ (load, update, store). _In general, there is no way for you to predict wether the operating system will choose a correct ordering for your threds._
 
-__progress graph__
+
+<a name="title_3_3_2"></a>__progress graph__
 
 A _progress graph_ models the execution of _n_ concurrent threads as a trajectory through an _n_-dimensional Cartesian space. Each axis _k_ corresponds to the progress of thread _k_. Each point represents the state where the corresponding thread has completed last instruction. The origin of the graph corresponds to the _initial state_ where none of the threads has yet completed an instruction.
 
@@ -298,7 +333,8 @@ In this case, for thread _i_, the instructions (L<sub>i</sub>, U<sub>i</sub>, S<
 
 In order to guarantee correct execution of concurrent program that shares global data structures, we must _synchronize_ the threads so that they always have a safe trajectory.
 
-__Semaphore Introduction__
+
+<a name="title_3_3_3"></a>__Semaphore Introduction__
 
 A semaphore, _s_, is a global variable with a _nonnegative_ integer value that can only be manipulated by two special operations, called _P_ and _V_:
 
@@ -324,7 +360,8 @@ The Posix standard defines a variety of functions for semaphores:
     int sem_wait(sem_t *s);    /* P(s) */
     int sem_post(sem_t *s);    /* V(s) */
 
-__Use semaphore for mutual exclusion__
+
+<a name="title_3_3_4"></a>__Use semaphore for mutual exclusion__
 
 The basic idea is to associate a semaphore _s_, initially 1, with each shared variable (or related set of shared variables) and then surround the correspoding critical section with _P_(s) and _V_(s) operations.
 
@@ -371,19 +408,16 @@ With changes above, we could get following _progress graph_ with _forbidden regi
 ![trajectory3](/images/concurrent-programming/trajectory3.png)
 
 
-__Use semaphore to schedule shared resources__
+
+<a name="title_3_3_5"></a>__Use semaphore to schedule shared resources__
 
 A thread could use semaphore operation to notify another thread that some condition in the program state has become true.
 
-# using threads for parallelism
+
+# <a name="title_3_4"></a>using threads for parallelism
 
 The set of all programs can be partitioned into the disjoint set of _sequential_ and _concurrent_ programs.
 
 * A sequential program is of a single logical flow
 * A concurrent program is of multiple concurrent flows. A parallel program is a concurrent program running on multiple processors
-
-
-
-
-
 
