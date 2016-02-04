@@ -6,7 +6,7 @@
 # 'jekyll serve'. If you change this file, please restart the server process.
 
 ###############
-# Site settings
+# customized settings
 ###############
 title: Zhaoting's Blog
 email: wztwcy@gmail.com
@@ -20,7 +20,6 @@ github_username: magodo
 
 # post excerpt
 excerpt_separator: <!--excerpt-->
-
 
 # front matter defaults
 #defaults:

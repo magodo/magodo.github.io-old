@@ -3,7 +3,7 @@ layout: "post"
 title: "Concurrent Porgramming"
 ---
 
-> This post introduce concurrent programming concept and highlight some key points
+> This post introduce concurrent programming concept, cited from CSAPP 2nd-ed
 <!--excerpt-->
 
 
@@ -43,6 +43,10 @@ Mordern OS provide 3 basic approach for building concurrent programs
   * [Use thread for parallelism](#title_3_4)
 * [Concurrency Issues](#title_4)
   * [Thread safety](#title_4_1)
+  * [Reentrancy](#title_4_2)
+  * [Use existing library functions in thread programs](#title_4_3)
+  * [Races](#title_4_4)
+  * [Deadlocks](#title_4_5)
 
 
 ## <a name="title_1"></a>Concurrent programming with __Process__
@@ -445,7 +449,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
   **Fix**
 
-  - Rewrite the **callee** and **caller** function so that **callee** function don't use any static data, relying instead on the **caller** to pass state information in arguments.
+  - Rewrite the **callee** and **caller** function so that **callee** function don't use any shared data, relying instead on the **caller** to pass state information in arguments. (in this case, the callee is a [_reentrant function_ ](#title_4_2))
 
 <b></b>
 
@@ -471,6 +475,176 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
     Only when _g_ is rewritten to be thread-safe, otherwise, _f_ is thread-unsafe
 
+# <a name="title_4_2"></a>Reentrancy
 
+_Reentrant function_ is characterized by the property that it doesn't reference _any_ shared data when they are called by multiple threads. It is one class of _thread-safe_ function.
 
+There are two favors of _reentrant function_:
 
+* _explicitly reentrant function_: If all function arguments are passed by value(i.e. no pointers) and all data references are to local automatic stack variables(i.e. no references to static or global variables), then the function is _explicitly reentrant function_. We can assert its _reentrancy_ regardless of how it is called
+* _implicitly reentrant function_: If some arguments are pointers, than we have an _implicitly reentrant function_. We can't tell if its _reentrancy_ in this case. It is reentrant only if the pointers point to nonshared data.
+
+# <a name="title_4_3"></a>Use existing library functions in thread programs
+
+Most Unix functions, including functions defined in standard C library, are _thread-safe_, with only a few exceptions.
+
+Here lists the common exceptions:
+
+|------------------------+-------------------+-------------------------|
+| Thread-unsafe function |Thread-unsafe class| Unix thread-safe version|
+|:-----------------------|:------------------|:------------------------|
+| rand                   | 2                 | rand_r                  |
+|------------------------|-------------------|-------------------------|
+| strtok                 | 2                 | strtok_r                |
+|------------------------|-------------------|-------------------------|
+| asctime                | 3                 | asctime_r               |
+|------------------------|-------------------|-------------------------|
+| ctime                  | 3                 | ctime_r                 |
+|------------------------|-------------------|-------------------------|
+| gethostbyaddr          | 3                 | gethostbyaddr_r         |
+|------------------------|-------------------|-------------------------|
+| gethostbyname          | 3                 | gethostbyname_r         |
+|------------------------|-------------------|-------------------------|
+| inet_ntoa              | 3                 | (none)                  |
+|------------------------|-------------------|-------------------------|
+| localtime              | 3                 | localtime_r             |
+|------------------------|-------------------|-------------------------|
+
+# <a name="title_4_4"></a>Races
+
+A _race_ occurs when the correctness of a program depends on one thread reaching point _x_ in its control flow before another thread reaches point _y_.
+
+Take following example to illustrate:
+
+{% highlight C linenos %}
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 4
+
+void *thread(void *vargp);
+
+int main(){
+    pthread_t tid[N];
+    int i;
+
+    for (i = 0; i < N; i++)
+        pthread_create(&tid[i], NULL, thread, &i);
+    for (i = 0; i < N; i++)
+        pthread_join(tid[i], NULL);
+    exit(0);
+}
+void *thread(void *vargp){
+    int myid = *((int*)vargp);
+    printf("Hello from thread %d\n", myid);
+    return NULL;
+}
+
+{% endhighlight %}
+
+The output is:
+
+    Hello from thread 2
+    Hello from thread 1
+    Hello from thread 3
+    Hello from thread 0
+
+This incorrect result is because of _race_ between line 14 and line 21.
+
+To eliminate the race, we can use one of following 2 approaches:
+
+1. Dynamically allocate a separate block for each integer ID, and pass the thread routine a pointer to this block. Notice that the thread is responsible to free the block in order to avoid a memory leak;
+2. Schedule access to integer ID via semaphore.
+
+{% highlight C linenos %}
+/* Dynamically allocate thread-specific block for each ID */
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define N 4
+
+void *thread(void *vargp);
+
+int main(){
+    pthread_t tid[N];
+    int i, *id;
+
+    for (i = 0; i < N; i++){
+        id = malloc(sizeof(int));              // allocate thread-specific block
+        *id = i;
+        pthread_create(&tid[i], NULL, thread, id);
+    }
+    for (i = 0; i < N; i++)
+        pthread_join(tid[i], NULL);
+    exit(0);
+}
+
+void *thread(void *vargp){
+    int myid = *((int*)vargp);
+    free(vargp);                               // free thread-specific block
+    printf("Hello from thread %d\n", myid);
+    return NULL;
+}
+
+{% endhighlight %}
+
+{% highlight C linenos %}
+/* Use semaphore to schedule resource access */
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <semaphore.h>
+
+#define N 4
+
+void *thread(void *vargp);
+
+sem_t sem;                    // define a semaphore to make "i" mutual exclusive
+
+int main(){
+    pthread_t tid[N];
+    int i;
+
+    sem_init(&sem, 0, 0);                    // init sem with value 0
+    for (i = 0; i < N; i++){
+        pthread_create(&tid[i], NULL, thread, &i);
+        sem_wait(&sem);                      // P, wait until last thread finish store i
+    }
+    for (i = 0; i < N; i++)
+        pthread_join(tid[i], NULL);
+    exit(0);
+}
+
+void *thread(void *vargp){
+    int myid = *((int*)vargp);
+    sem_post(&sem);                          // V, after finish store i, increase sem
+    printf("Hello from thread %d\n", myid);
+    return NULL;
+}
+
+{% endhighlight %}
+
+# <a name="title_4_5"></a>Deadlocks
+
+Semaphores introduce the potential for a nasty kind of run-time error, called _deadlock_. It means _a collection of threads are blocked, waiting for a condition that will never be true_.
+
+The progress graph is like below:
+
+![trajectory_deadlock](/images/concurrent-programming/trajectory_deadlock.png)
+
+From this graph, we can glean some important insights about deadlock:
+
+* The programmer has incorrectly ordered the P and V operations such that the forbidden regions for the two semaphores create a closed, left-bottom corner _deadlock region_. If a trajectory happends to touch a state in the deadlock region, then deadlock is inevitable. Trajectories can enter deadlock regions, but they can never leave!
+* Deadlock is not predictable.
+
+Programs deadlock for many reasons and avoiding them is a difficult problem in general. However, when _binary semaphores_ are used for mutual exclusion, then you can apply the following simple and effective rule to avoid deadlocks:
+
+  _Mutex lock ordering rule_: A program is deadlock-free if, for each pair of mutexes ( _s_, _t_, _k_, ...) in the program, each thread that holds _s_, _t_ and _k_ simultaneously, locks these semaphores in the same order.
+
+For example, we can fix the deadlock above by locking _s_ first, then _t_ in each thread:
+
+![trajectory_deadlock_free](/images/concurrent-programming/trajectory_deadlock_free.png)
