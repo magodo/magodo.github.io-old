@@ -371,7 +371,7 @@ The Posix standard defines a variety of functions for semaphores:
 
 The basic idea is to associate a semaphore _s_, initially 1, with each shared variable (or related set of shared variables) and then surround the correspoding critical section with _P_(s) and _V_(s) operations.
 
-A semaphore that is used in this way to protect shared variables is called a _binary semaphore_ because its value is always 0 or 1. Binary semaphores whose purpose is to provide mutual exclusion, AKA _mutexes_.
+A semaphore that is used in this way to protect shared variables is called a <a name="bin_sem"></a>__binary semaphore__ because its value is always 0 or 1. Binary semaphores whose purpose is to provide mutual exclusion, AKA _mutexes_.
 
   * Performing a _P_ operation on a mutex is called _locking_ the mutex
   * Performing a _V_ operation on a mutex is called _unlocking_ the mutex
@@ -427,7 +427,7 @@ The set of all programs can be partitioned into the disjoint set of _sequential_
 * A sequential program is of a single logical flow
 * A concurrent program is of multiple concurrent flows. A parallel program is a concurrent program running on multiple processors
 
-##<a name="title_4"></a>Concurrency Issues
+## <a name="title_4"></a>Concurrency Issues
 
 # <a name="title_4_1"></a>Thread safety
 
@@ -435,7 +435,7 @@ A function is said to be _thead-safe_ if and only if it will always produce corr
 
 Normally, there are four classes of _thread-unsafe_ functions:
 
-* _Class 1: Functions that do not protect shared variables_
+* __Class 1__: Functions that do not protect shared variables
 
   **Fix**
 
@@ -445,7 +445,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
 <b></b>
 
-* _Class 2: Functions that keep state in some static variables(e.g. variables in .data section) across multiple invocations_
+* __Class 2__: Functions that keep state in some static variables(e.g. variables in .data section) across multiple invocations
 
   **Fix**
 
@@ -453,7 +453,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
 <b></b>
 
-* _Class 3: Functions that return a pointer to a static variable_
+* __Class 3__: Functions that return a pointer to a static variable
 
   **Fix**
 
@@ -463,7 +463,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
 <b></b>
 
-* _Class 4: Functions that call thread-unsafe functions_
+* __Class 4__: Functions that call thread-unsafe functions
 
   If a function _f_ calls a thread-unsafe function _g_, it depends:
 
@@ -641,9 +641,9 @@ From this graph, we can glean some important insights about deadlock:
 * The programmer has incorrectly ordered the P and V operations such that the forbidden regions for the two semaphores create a closed, left-bottom corner _deadlock region_. If a trajectory happends to touch a state in the deadlock region, then deadlock is inevitable. Trajectories can enter deadlock regions, but they can never leave!
 * Deadlock is not predictable.
 
-Programs deadlock for many reasons and avoiding them is a difficult problem in general. However, when _binary semaphores_ are used for mutual exclusion, then you can apply the following simple and effective rule to avoid deadlocks:
+Programs deadlock for many reasons and avoiding them is a difficult problem in general. However, when [_binary semaphores_](#bin_sem) are used for mutual exclusion, then you can apply the following simple and effective rule to avoid deadlocks:
 
-  _Mutex lock ordering rule_: A program is deadlock-free if, for each pair of mutexes ( _s_, _t_, _k_, ...) in the program, each thread that holds _s_, _t_ and _k_ simultaneously, locks these semaphores in the same order.
+  __Mutex lock ordering rule__: A program is deadlock-free if, for each pair of mutexes ( _s_, _t_, _k_, ...) in the program, each thread that holds _s_, _t_ and _k_ simultaneously, locks these semaphores in the same order.
 
 For example, we can fix the deadlock above by locking _s_ first, then _t_ in each thread:
 
