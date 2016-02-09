@@ -1,6 +1,7 @@
 ---
 layout: "post"
 title: "\"using declaration\" vs \"using directives\""
+categories: "cpp"
 ---
 
 <!--excerpt-->

@@ -1,6 +1,7 @@
 ---
 layout: post
 title: Good Comment
+categories: "cpp"
 ---
 
 > Some general rules to write comment...

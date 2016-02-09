@@ -1,6 +1,7 @@
 ---
 layout: "post"
 title: Error Handling
+categories: "computer system"
 ---
 
 > This post introduce error handling in unix via wrap function, cited from CSAPP 2nd-ed

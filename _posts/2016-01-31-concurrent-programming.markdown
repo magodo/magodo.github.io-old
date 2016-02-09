@@ -1,11 +1,43 @@
 ---
 layout: "post"
 title: "Concurrent Porgramming"
+categories: "computer system"
 ---
 
 > This post introduce concurrent programming concept, cited from CSAPP 2nd-ed
+
 <!--excerpt-->
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+**Table of Contents**
+
+- [Concurrent programming with __Process__](#concurrent-programming-with-__process__)
+- [Concurrent programming with __I/O Multiplexing__](#concurrent-programming-with-__io-multiplexing__)
+- [Concurrent programming with __Threads__](#concurrent-programming-with-__threads__)
+  - [Introducing thread](#introducing-thread)
+    - [General Introduction](#general-introduction)
+    - [Thread creation](#thread-creation)
+    - [Thread termiation](#thread-termiation)
+    - [Thread repeatedly termination](#thread-repeatedly-termination)
+    - [Thread detachment](#thread-detachment)
+    - [Thread initialization](#thread-initialization)
+  - [Share variables in thread programs](#share-variables-in-thread-programs)
+    - [mapping variables to memory](#mapping-variables-to-memory)
+  - [synchronizing threads with semaphores](#synchronizing-threads-with-semaphores)
+    - [machine instrcution interleave](#machine-instrcution-interleave)
+    - [progress graph](#progress-graph)
+    - [Semaphore Introduction](#semaphore-introduction)
+    - [Use semaphore for mutual exclusion](#use-semaphore-for-mutual-exclusion)
+    - [Use semaphore to schedule shared resources](#use-semaphore-to-schedule-shared-resources)
+  - [using threads for parallelism](#using-threads-for-parallelism)
+- [Concurrency Issues](#concurrency-issues)
+  - [Thread safety](#thread-safety)
+  - [Reentrancy](#reentrancy)
+  - [Use existing library functions in thread programs](#use-existing-library-functions-in-thread-programs)
+  - [Races](#races)
+  - [Deadlocks](#deadlocks)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 Mordern OS provide 3 basic approach for building concurrent programs
 
@@ -22,34 +54,7 @@ Mordern OS provide 3 basic approach for building concurrent programs
 3. Threads
   * think of threads as a hybrid of the other two approcheas: scheduled by kernel, sharing the same virtual address space
 
-* [Concurrent Programming with Process](#title_1)
-* [Concurrent Programming with I/O Multiplexing](#title_2)
-* [Concurrent Programming with Thread](#title_3)
-  * [Introduce thread](#title_3_1)
-    * [general introduce](#title_3_1_1)
-    * [thread creation](#title_3_1_2)
-    * [thread termination](#title_3_1_3)
-    * [thread repeatedly termination](#title_3_1_4)
-    * [thread detach](#title_3_1_5)
-    * [thread initialization](#title_3_1_6)
-  * [Share variables in thread programs](#title_3_2)
-    * [mapping variables to memory](#title_3_2_1)
-  * [Synchronize thread with thread](#title_3_3)
-    * [machine level interleave](#title_3_3_1)
-    * [progress graph](#title_3_3_2)
-    * [semaphore introduction](#title_3_3_3)
-    * [use semaphore for mutual exclusion](#title_3_3_4)
-    * [use semaphore to schedule shared resource](#title_3_3_5)
-  * [Use thread for parallelism](#title_3_4)
-* [Concurrency Issues](#title_4)
-  * [Thread safety](#title_4_1)
-  * [Reentrancy](#title_4_2)
-  * [Use existing library functions in thread programs](#title_4_3)
-  * [Races](#title_4_4)
-  * [Deadlocks](#title_4_5)
-
-
-## <a name="title_1"></a>Concurrent programming with __Process__
+# Concurrent programming with __Process__
 
 __NOTE__
 
@@ -65,7 +70,7 @@ __Pros & Cons__
     - Have separate address space, which is more difficult to share state information. To share information, they must use explicit IPC mechanisms
     - Tends to be slower because the overhead for process control and IPC is high
 
-## <a name="title_2"></a>Concurrent programming with __I/O Multiplexing__
+# Concurrent programming with __I/O Multiplexing__
 
 The basic idea is to use the `select` function to ask the kernel to suspend the process, returing control to the application only after one or more I/O events have occured, as in the following examples:
 
@@ -100,13 +105,13 @@ __Pros & Cons__
     - Coding complexity
 
 
-## <a name="title_3"></a>Concurrent programming with __Threads__
+# Concurrent programming with __Threads__
 
-# <a name="title_3_1"></a>Introducing thread
+## Introducing thread
 
 
 
-<a name="title_3_1_1"></a>__General Introduction__
+### General Introduction
 
 * The threads are scheduled by kernel
 * Each thread has its own _thread context_, including a unique integer _thread ID_(TID), stack, stack pointer, program counter, general-purpose registers and condition codes
@@ -115,7 +120,7 @@ __Pros & Cons__
 * The code and local data for a thread is encapsulated in a _thread routine_, it takes a generic pointer as input and returns a generic pointer
 
 
-<a name="title_3_1_2"></a>__Thread creation__
+### Thread creation
 
 New thread is created via calling `pthread_create`:
 
@@ -182,7 +187,7 @@ void *thread(void *vargp){
 {% endhighlight %}
 
 
- a name="title_3_1_3"></a>__Thread termiation__
+### Thread termiation
 
 A thread terminates in one of the following ways:
 
@@ -204,8 +209,7 @@ A thread terminates in one of the following ways:
 
     int pthread_cancel(pthread_t tid);
 
-
-<a name="title_3_1_4"></a>__Thread repeatedly termination__
+### Thread repeatedly termination
 
 Threads wait for other threads to terminate by calling the `pthread_join` function:
 
@@ -218,7 +222,7 @@ The `thread_join` function blocks until thread _tid_ terminates, assigns the gen
 Note: unlike Unix `wait` function, the `pthread_join` function can only wait for a _specific_ thread to terminiate. There is no way to instruct `pthread_wait` to wait for an _arbitrary_ thread to terminate.
 
 
-<a name="title_3_1_5"></a>__Thread detachment__
+### Thread detachment
 
 At any point in time, a thread is _joinable_ or _detached_.
 
@@ -237,7 +241,7 @@ or
     int pthread_detach(pthread_t tid);
 
 
-<a name="title_3_1_6"></a>__Thread initialization__
+### Thread initialization
 
 The `pthread_once` function allows you to initialize the state associated with a thread routine.
 
@@ -255,7 +259,7 @@ The first time any thread in a process call `pthread_once` with an argument of *
 Subsequent calls from any other threads inside this process to `pthread_once` with the same *once_control* variable do nothing. 
 
 
-# <a name="title_3_2"></a>Share variables in thread programs
+## Share variables in thread programs
 
 The variable is _shared_ if and only if multiple threads reference some instance of the variable.
 
@@ -280,7 +284,7 @@ Each thread shares the rest of the process context with the other threads, which
 In operational sense, it is impossible for one thread to read or write the register values of another thread; On the other hand, any thread can access any location in the shared VM (including other threads' stack). Thus, registers are never shared, whereas VM is always shared(stack is not clean).
 
 
-<a name="title_3_2_1"></a>__mapping variables to memory__
+### mapping variables to memory
 
 * _Global variables_: At run time, the r/w area of VM contains exactly one instance of each global variables that can be referenced by any thread.
 * _Local automatic variables_: At run time, each thread's stack contain its own instance of any local automatic variables.
@@ -288,10 +292,10 @@ In operational sense, it is impossible for one thread to read or write the regis
 
 
 
-# <a name="title_3_3"></a>synchronizing threads with semaphores
+## synchronizing threads with semaphores
 
 
-<a name="title_3_3_1"></a>__machine instrcution interleave__
+### machine instrcution interleave
 
 When peer threads run concurrently on a uniprocessor, the _machine instructions_ are completed one after the other in some order. This will cause nasty synchronizing errors.
 
@@ -323,7 +327,7 @@ void *thread(void *vargp){
 In this case, the resulting _cnt_ is not ensured to be `2 * niters`. This is because, the for loop body in line 17 consists of 3 _machine instructions_ (load, update, store). _In general, there is no way for you to predict wether the operating system will choose a correct ordering for your threds._
 
 
-<a name="title_3_3_2"></a>__progress graph__
+### progress graph
 
 A _progress graph_ models the execution of _n_ concurrent threads as a trajectory through an _n_-dimensional Cartesian space. Each axis _k_ corresponds to the progress of thread _k_. Each point represents the state where the corresponding thread has completed last instruction. The origin of the graph corresponds to the _initial state_ where none of the threads has yet completed an instruction.
 
@@ -340,7 +344,7 @@ In this case, for thread _i_, the instructions (L<sub>i</sub>, U<sub>i</sub>, S<
 In order to guarantee correct execution of concurrent program that shares global data structures, we must _synchronize_ the threads so that they always have a safe trajectory.
 
 
-<a name="title_3_3_3"></a>__Semaphore Introduction__
+### Semaphore Introduction
 
 A semaphore, _s_, is a global variable with a _nonnegative_ integer value that can only be manipulated by two special operations, called _P_ and _V_:
 
@@ -367,7 +371,7 @@ The Posix standard defines a variety of functions for semaphores:
     int sem_post(sem_t *s);    /* V(s) */
 
 
-<a name="title_3_3_4"></a>__Use semaphore for mutual exclusion__
+### Use semaphore for mutual exclusion
 
 The basic idea is to associate a semaphore _s_, initially 1, with each shared variable (or related set of shared variables) and then surround the correspoding critical section with _P_(s) and _V_(s) operations.
 
@@ -415,21 +419,21 @@ With changes above, we could get following _progress graph_ with _forbidden regi
 
 
 
-<a name="title_3_3_5"></a>__Use semaphore to schedule shared resources__
+### Use semaphore to schedule shared resources
 
 A thread could use semaphore operation to notify another thread that some condition in the program state has become true.
 
 
-# <a name="title_3_4"></a>using threads for parallelism
+## using threads for parallelism
 
 The set of all programs can be partitioned into the disjoint set of _sequential_ and _concurrent_ programs.
 
 * A sequential program is of a single logical flow
 * A concurrent program is of multiple concurrent flows. A parallel program is a concurrent program running on multiple processors
 
-## <a name="title_4"></a>Concurrency Issues
+# Concurrency Issues
 
-# <a name="title_4_1"></a>Thread safety
+## Thread safety
 
 A function is said to be _thead-safe_ if and only if it will always produce correct results when called repeatedly from one or multiple concurrent threads
 
@@ -449,7 +453,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
   **Fix**
 
-  - Rewrite the **callee** and **caller** function so that **callee** function don't use any shared data, relying instead on the **caller** to pass state information in arguments. (in this case, the callee is a [_reentrant function_ ](#title_4_2))
+  - Rewrite the **callee** and **caller** function so that **callee** function don't use any shared data, relying instead on the **caller** to pass state information in arguments. (in this case, the callee is a [_reentrant function_ ](#reentrancy)
 
 <b></b>
 
@@ -475,7 +479,7 @@ Normally, there are four classes of _thread-unsafe_ functions:
 
     Only when _g_ is rewritten to be thread-safe, otherwise, _f_ is thread-unsafe
 
-# <a name="title_4_2"></a>Reentrancy
+## Reentrancy
 
 _Reentrant function_ is characterized by the property that it doesn't reference _any_ shared data when they are called by multiple threads. It is one class of _thread-safe_ function.
 
@@ -484,7 +488,7 @@ There are two favors of _reentrant function_:
 * _explicitly reentrant function_: If all function arguments are passed by value(i.e. no pointers) and all data references are to local automatic stack variables(i.e. no references to static or global variables), then the function is _explicitly reentrant function_. We can assert its _reentrancy_ regardless of how it is called
 * _implicitly reentrant function_: If some arguments are pointers, than we have an _implicitly reentrant function_. We can't tell if its _reentrancy_ in this case. It is reentrant only if the pointers point to nonshared data.
 
-# <a name="title_4_3"></a>Use existing library functions in thread programs
+## Use existing library functions in thread programs
 
 Most Unix functions, including functions defined in standard C library, are _thread-safe_, with only a few exceptions.
 
@@ -510,7 +514,7 @@ Here lists the common exceptions:
 | localtime              | 3                 | localtime_r             |
 |------------------------|-------------------|-------------------------|
 
-# <a name="title_4_4"></a>Races
+## Races
 
 A _race_ occurs when the correctness of a program depends on one thread reaching point _x_ in its control flow before another thread reaches point _y_.
 
@@ -628,7 +632,7 @@ void *thread(void *vargp){
 
 {% endhighlight %}
 
-# <a name="title_4_5"></a>Deadlocks
+## Deadlocks
 
 Semaphores introduce the potential for a nasty kind of run-time error, called _deadlock_. It means _a collection of threads are blocked, waiting for a condition that will never be true_.
 
@@ -641,7 +645,7 @@ From this graph, we can glean some important insights about deadlock:
 * The programmer has incorrectly ordered the P and V operations such that the forbidden regions for the two semaphores create a closed, left-bottom corner _deadlock region_. If a trajectory happends to touch a state in the deadlock region, then deadlock is inevitable. Trajectories can enter deadlock regions, but they can never leave!
 * Deadlock is not predictable.
 
-Programs deadlock for many reasons and avoiding them is a difficult problem in general. However, when [_binary semaphores_](#bin_sem) are used for mutual exclusion, then you can apply the following simple and effective rule to avoid deadlocks:
+Programs deadlock for many reasons and avoiding them is a difficult problem in general. However, when [_binary semaphores_](#use-semaphore-for-mutual-exclusion)) are used for mutual exclusion, then you can apply the following simple and effective rule to avoid deadlocks:
 
   __Mutex lock ordering rule__: A program is deadlock-free if, for each pair of mutexes ( _s_, _t_, _k_, ...) in the program, each thread that holds _s_, _t_ and _k_ simultaneously, locks these semaphores in the same order.
 
