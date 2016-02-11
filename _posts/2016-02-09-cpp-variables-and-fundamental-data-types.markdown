@@ -1,10 +1,9 @@
 ---
 layout: post
-title: Variables and Fundamental Data Types
+title: "Variables and Fundamental Data Types"
 categories: cpp
 ---
-
-<!--excerpt-->
+<!--more-->
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 **Table of Contents**

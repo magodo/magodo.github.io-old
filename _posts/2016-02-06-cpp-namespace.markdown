@@ -2,10 +2,9 @@
 layout: "post"
 title: "\"using declaration\" vs \"using directives\""
 categories: "cpp"
+tags: []
 ---
-
-<!--excerpt-->
-
+<!--more-->
 Let's look at below example:
 
 {% highlight cpp linenos %}

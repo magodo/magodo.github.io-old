@@ -1,11 +1,9 @@
 ---
 layout: post
-title: Good Comment
+title: "Good Comment"
 categories: "cpp"
 ---
-
-> Some general rules to write comment...
-<!--excerpt-->
+<!--more-->
 
 * At the library, program, or funtion level, describe _what_
 * Inside the library, program, or function, describe _how_

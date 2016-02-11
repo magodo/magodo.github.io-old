@@ -1,11 +1,9 @@
 ---
 layout: "post"
-title: Error Handling
-categories: "computer system"
+title: "Error Handling"
+categories: "computerSystem"
 ---
-
-> This post introduce error handling in unix via wrap function, cited from CSAPP 2nd-ed
-<!--excerpt-->
+<!--more-->
 
 Programmers should _always_ check the error code returned by system-level functions. There are many subtle ways that things can go wrong, and it only makes sense to use the status information that the kernel provides us.
 

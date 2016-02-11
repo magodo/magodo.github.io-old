@@ -19,7 +19,7 @@ twitter_username: magodo_
 github_username: magodo
 
 # post excerpt
-excerpt_separator: <!--excerpt-->
+excerpt_separator: <!--more-->
 
 # front matter defaults
 #defaults:

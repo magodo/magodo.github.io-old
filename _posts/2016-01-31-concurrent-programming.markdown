@@ -1,12 +1,10 @@
 ---
-layout: "post"
+layout: post
 title: "Concurrent Porgramming"
-categories: "computer system"
+categories: "computerSystem"
+tags: []
 ---
-
-> This post introduce concurrent programming concept, cited from CSAPP 2nd-ed
-
-<!--excerpt-->
+<!--more-->
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 **Table of Contents**

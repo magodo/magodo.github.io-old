@@ -1,11 +1,10 @@
 ---
-layout: "post"
+layout: post
 title:  "Continental 2016 anual dinner"
 categories: life
 ---
 
->2016 anual dinner, come to see the details...
-<!--excerpt-->
+<!--more-->
 
 Hey guys, I'm just back from `Continental` 2016 anual dinner. My friends and I performed a wonderful dancing show: `uptown funk`! It's awesome, hope every one enjoyed it!
 
