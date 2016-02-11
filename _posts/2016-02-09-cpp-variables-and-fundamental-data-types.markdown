@@ -282,30 +282,50 @@ There are several reasons:
 
 The easiest way is:
 
-1. Create a header file to hold these constants;
-2. Inside this header file, declare a namespace;
+1. Create a header file to hold these constants declarations, and a source file to hold these constants definitions;
+2. Inside this header file, declare a namespace with variables of `extern const`. Inside this source file, define the namespace with variables of `extern const`;
 3. Add all your constants inside the namespace (make sure they're constant);
 4. `#include` the header file wherever you need it
 
-E.g. constants.h:
+E.g. 
 
-    #ifndef CONSTANTS_H
-    #define CONSTANTS_H
-     
-    // define your own namespace to hold constants
-    namespace constants
-    {
-        const double pi(3.14159);
-        const double avogadro(6.0221413e23);
-        const double my_gravity(9.2); // m/s^2 -- gravity is light on this planet
-        // ... other related constants
-    }
-    #endif
+constants.cpp:
+
+{% highlight CPP linenos %}
+namespace Constants
+{
+    // actual global variables
+    extern const double pi(3.14159);
+    extern const double avogadro(6.0221413e23);
+    extern const double my_gravity(9.2); // m/s^2 -- gravity is light on this planet
+}
+{% endhighlight%}
+
+constants.h
+
+{% highlight CPP linenos %}
+#ifndef CONSTANTS_H
+#define CONSTANTS_H
+ 
+namespace Constants
+{
+    // forward declarations only
+    extern const double pi;
+    extern const double avogadro;
+    extern const double my_gravity;
+}
+ 
+#endif
+{% endhighlight%}
 
 Use the scope resolution operator (::) to access your constants in .cpp files:
 
-    #include "constants.h"
-    double circumference = 2 * radius * constants::pi;
+{% highlight CPP linenos %}
+#include "constants.h"
+double circumference = 2 * radius * Constants::pi;
+{% endhighlight%}
+
+Now the symbolic constants will get instantiated only once (in constants.cpp), instead of once every time constants.h is #included, and the other uses will simply reference the version in constants.cpp.
 
 
 
