@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Switch Statement](#switch-statement)
+  - [case label](#case-label)
+  - [Multiple statements inside a switch block](#multiple-statements-inside-a-switch-block)
+  - [Variable declaration and initialization inside case statements](#variable-declaration-and-initialization-inside-case-statements)
+- [While Loop](#while-loop)
+  - [Rule: Always use signed integers for your loop variables](#rule-always-use-signed-integers-for-your-loop-variables)
+- [For Loop](#for-loop)
+  - [Scope](#scope)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ---
 layout: post
 title: "Control Flow"
