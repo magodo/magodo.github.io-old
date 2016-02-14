@@ -3,6 +3,7 @@ layout: post
 title: "Array, String, Pointer and Reference"
 categories: "cpp"
 ---
+
 <!--more-->
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
