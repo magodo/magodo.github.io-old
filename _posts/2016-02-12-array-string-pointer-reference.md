@@ -1,4 +1,3 @@
-
 ---
 layout: post
 title: "Array, String, Pointer and Reference"
