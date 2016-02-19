@@ -136,7 +136,7 @@ Making a call to an overloaded function results in one of three possible outcome
 
 When an overloaded function is called, C++ goes through the following process to determine which version of the function will be called:
 
-1. First, C++ tries to find an exact match. This is the case where the actual argument exactly matches the parameter type of one of the overloaded functions. For example:
+* First, C++ tries to find an exact match. This is the case where the actual argument exactly matches the parameter type of one of the overloaded functions. For example:
 
 {% highlight CPP linenos %}
 void print(char *value);
@@ -147,7 +147,7 @@ print(0); // exact match with print(int)
 
 Although 0 could technically match print(char*) (as a null pointer), it exactly matches print(int). Thus print(int) is the best match available.
 
-2. If no exact match is found, C++ tries to find a match through __promotion__. As well known, types can be automatically promoted via internal type conversion to other types. To summarize,
+* If no exact match is found, C++ tries to find a match through __promotion__. As well known, types can be automatically promoted via internal type conversion to other types. To summarize,
 
     * Char, unsigned char, and short is promoted to an int.
     * Unsigned short can be promoted to int or unsigned int, depending on the size of an int
@@ -165,11 +165,11 @@ print('a'); // promoted to match print(int)
 
 In this case, because there is no print(char), the char ‘a’ is promoted to an integer, which then matches print(int).
 
-3. If no promotion is found, C++ tries to find a match through __standard conversion__. Standard conversions include:
+* If no promotion is found, C++ tries to find a match through __standard conversion__. Standard conversions include:
 
-    * Any numeric type will match any other numeric type, including unsigned (eg. int to float)
-    * Enum will match the formal type of a numeric type (eg. enum to float)
-    * Zero will match a pointer type and numeric type (eg. 0 to char*, or 0 to float)
+    * Any numeric type will match any other numeric type, including unsigned (eg. int to float)(__might introduce ambiguous__)
+    * Enum will match the formal type of a numeric type (eg. enum to float)(__might introduce ambiguous__)
+    * Zero will match a pointer type and numeric type (eg. 0 to char*, or 0 to float)(__might introduce ambiguous__)
     * A pointer will match a void pointer
 
 For example:
@@ -186,7 +186,7 @@ In this case, because there is no print(char), and no print(int), the ‘a’ is
 
 Note that all standard conversions are considered equal. No standard conversion is considered better than any of the others.
 
-4. Finally, C++ tries to find a match through __user-defined conversion__. Classes can define conversions to other types that can be implicitly applied to objects of that class. 
+* Finally, C++ tries to find a match through __user-defined conversion__. Classes can define conversions to other types that can be implicitly applied to objects of that class. 
 
 For example, we might define a class X and a user-defined conversion to int.
 
@@ -243,4 +243,95 @@ If there are multiple arguments, C++ applies the matching rules to each argument
 (每个参数至少和其他的函数匹配的一样好，并且至少有一个参数比其他的函数匹配的更好)
 
 In the case that such a function is found, it is clearly and unambiguously the best choice. If no such function can be found, the call will be considered ambiguous (or a non-match).
+
+
+# Default parameters
+
+C++ support default parameter in:
+
+1. forward declaration THEN definition: function declaration 
+2. definition only: function definition
+
+For example:
+
+{% highlight CPP linenos %}
+void printValue(int x = 10, int y = 20, int z = 30)
+{
+    std::count << "Values: " << x << " " << y << " " << z << '\n';
+}
+{% endhighlight %}
+
+Note that it is impossible to supply a user-defined value for `z` without also supplying a value for `x` and `y`. This is because C++ does not support a function call syntax such as `printValue(,,3)`. This has two major consequences:
+
+* All default parameters must be the rightmost parameters. The following is not allowed:
+{% highlight CPP %}
+void printValue(int x=10, int y);  // not allowed
+{% endhighlight %}
+* If more than one default parameter exists, the leftmost default parameter should be the one most likely to be explicitly set by the user.
+
+## Default parameter and function overloading
+
+It is important to note that default parameters do NOT count towards the parameters that make the function unique. Consequently, following is not allowed:
+{% highlight CPP linenos %}
+void printValue(int x);
+void printValue(int x, int y = 20);
+{% endhighlight %}
+If the caller were to call `printValue(10)`, the compiler would not be able to disambiguate whether the user wanted `printValue(int, 20)` or `printValue(int)`.
+
+# Function Pointers
+
+A pointer to a function could be defined as:
+
+{% highlight CPP %}
+void (*foo)(int);
+{% endhighlight %}
+
+Remember the right-left rule.
+
+## Calling a function using a funtion pointer
+
+There are two ways to do this:
+
+1. Explicitly dereference: `(*foo)()`
+2. Implicitly dereference: `foo()`
+
+NOTE: Default arguments are resolved at __compile-time__ (that is, if you don't supply an argument for a defaulted parameter, the compiler substitutes one in for you when the code is compiled). However, function pointers are resolved at __run-time__. Consequently, default parameters can NOT be resolved when making a function call with a function pointer. You'll explicitly have to pass in values for any defaulted parameters in this case.
+
+## Providing default functions
+
+It is possible to set a default callback function parameter in a function call. For example:
+
+{% highlight CPP %}
+bool ascending(int, int);
+void selectionSort(int *array, int size, bool (*comp)(int, int) = ascending);
+{% endhighlight %}
+
+## Making function pointers prettier with typedef
+
+`typedef` can be used to make pointers to function look more like regular variables:
+
+{% highlight CPP %}
+typedef bool (*validateFcn)(int, int);
+{% endhighlight %}
+
+This defines a type called `validateFcn` that is a pointer to a function that takes two ints and returns a bool.
+
+Now instead of doing this:
+
+{% highlight CPP %}
+void selectionSort(int *array, int size, bool (*comp)(int, int));
+{% endhighlight %}
+
+You can do this:
+
+{% highlight CPP linenos %}
+void selectionSort(int *array, int size, validateFcn comp);
+{% endhighlight %}
+
+One final __NOTE__: C++ doesn't allow the conversion of __function pointer__ to __void pointer__ (or vice-versa).
+
+
+
+
+
 
