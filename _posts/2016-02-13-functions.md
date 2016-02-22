@@ -330,8 +330,157 @@ void selectionSort(int *array, int size, validateFcn comp);
 
 One final __NOTE__: C++ doesn't allow the conversion of __function pointer__ to __void pointer__ (or vice-versa).
 
+# std::vector capacity and stack behavior
 
+`std::vector` contains two separate attributes: __size__ and __cap__acity. 
 
+In the context of a `std::vector`, 
 
+* size is how many elements are being used in the array
+* capacity is how many elements were allocated.
 
+`std::vector` will reallocate its memory if needed, but it would prefer not to, because resizing an array is computationally expensive. Consider the following:
+
+{% highlight CPP linenos %}
+#include <vector>
+ 
+int main()
+{
+std::vector<int> array;
+array = { 0, 1, 2, 3, 4 }; // okay, array length = 5
+std::cout << "size: " << array.size() << "  capacity: " << array.capacity() << '\n';
+ 
+array = { 9, 8, 7 }; // okay, array length is now 3!
+std::cout << "size: " << array.size() << "  capacity: " << array.capacity() << '\n';
+ 
+return 0;
+}
+{% endhighlight %}
+
+This produces the following:
+
+---
+size: 5  capacity: 5
+
+size: 3  capacity: 5
+
+---
+
+Array `subscripts` and `at()` are based on __size__, not capacity. If you try to access 4th element in example above, it will fail.
+
+## Stack behavior with std::vector
+
+We can make use of 3 functions provided by `std::vector` to simulate stack behavior:
+
+* `push_back()`: pushes an element on stack
+* `back()`: return value of the top element on the stack
+* `pop_back()`: pop an element off the stack
+
+Let's see an example:
+
+{% highlight CPP linenos %}
+
+void printStack(const std::vector<int> &stack)
+{
+    for (const auto &element : stack)
+        std::cout << element << ' ';
+    std::cout << "(cap " << stack.capacity() << " size " << stack.size() << ")\n";
+}
+ 
+int main()
+{
+    std::vector<int> stack;
+ 
+    printStack(stack);
+ 
+    stack.push_back(5); // push_back() pushes an element on the stack
+    printStack(stack);
+ 
+    stack.push_back(3);
+    printStack(stack);
+ 
+    stack.push_back(2);
+    printStack(stack);
+ 
+    std::cout << "top: " << stack.back() << '\n'; // back() returns the last element
+ 
+    stack.pop_back(); // pop_back() back pops an element off the stack
+    printStack(stack);
+ 
+    stack.pop_back();
+    printStack(stack);
+ 
+    stack.pop_back();
+    printStack(stack);
+ 
+    return 0;
+}
+
+{% endhighlight %}
+
+This prints:
+
+---
+(cap 0 size 0)
+
+5 (cap 1 size 1)
+
+5 3 (cap 2 size 2)
+
+5 3 2 (cap 3 size 3)
+
+top: 2
+
+5 3 (cap 3 size 2)
+
+5 (cap 3 size 1)
+
+(cap 3 size 0)
+
+---
+
+Unlike array subscripts or at(), the stack-based functions will resize the std::vector if necessary. In the example above, the vector gets resized 3 times (from a capacity of 0 to 1, 1 to 2, and 2 to 3).
+
+Because resizing the vector is expensive, we can tell the vector to allocate a certain amount of capacity up front using the `reserve()` function.
+
+# Handling Errors
+
+## Assert
+
+An __assert statement__ is a preprocessor macro that evaluates a conditional expression. 
+
+* If the conditional expression is true, the assert statement does nothing;
+* Otherwise, an error message is displayed and the program is terminated. 
+
+  This error message contains the conditional expression that failed, along with the name of the code file and the line number of the assert.
+
+Assert functionality lives in `<cassert>` header.
+
+Rule: Favor `asset` statement liberally throughout your code where you want your code to quit if error occurs.
+
+## NDEBUG and other considerations
+
+The `assert` function comes with a small performance cost that is incurred each time the assert condition is checked. Furthermore, `asserts` should (ideally) never be encountered in production code (because your code should already be thoroughly tested). Consequently, many developers prefer that asserts are only active in debug builds. C++ comes with a way to turn off asserts in production code: `#define NDEBUG`:
+
+{% highlight CPP linenos %}
+#define NDEBUG
+
+// all assert() calls will now be ignored to the end of the file
+{% endhighlight%}
+
+## Exception
+
+C++ provides one more method for detecting and handling errors known as exception handling. The basic idea is that when an error occurs, the error is “thrown”. If the current function does not “catch” the error, the caller of the function has a chance to catch the error. If the caller does not catch the error, the caller’s caller has a chance to catch the error. The error progressively moves up the stack until it is either caught and handled, or until main() fails to handle the error. If nobody handles the error, the program typically terminates with an exception error.
+
+# Ellipsis
+
+C++ provides a special specifier known as __ellipsis__(aka "..."), that allows us to define functions which take a _variable_ number of parameters.
+
+Function that uses ellipsis take the form:
+
+{% highlight CPP %}
+return_type function_name(argument_list, ...)
+{% endhighlight%}
+
+Note that functions that use ellipsis must have at least one non-ellipsis parameter.
 
