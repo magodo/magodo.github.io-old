@@ -648,6 +648,7 @@ Note:
 
 * static member functions are not attached to an object, they have no `this` pointer!
 * static member functions can only access static member variables.
+* when defining static function, don't need `static` decorator. 
 
 ## C++ does not support static constructors
 
