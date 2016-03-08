@@ -612,3 +612,166 @@ a
 
 1. 由于下标操作符的返回值应该是个lvalue(存在内存空间)，而指针和引用都保证了这一点，因此，在重载subscript的时候需要将返回值声明为引用。这样，返回的m_string元素是真正的m_string元素，也就支持直接对其就行修改了；
 2. 重载下标操作符可以使程序员进行边界检查，这是很容易出错的一个点，因为编译器不会报错，只有运行时才会暴露。
+
+## 2.4 重载圆括号(parenthesis) ()
+
+圆括号操作符的特点是它允许各种操作数的**数目**和**类型**。
+
+注意：
+
+1. 圆括号操作符只能通过成员函数的方式进行重载；
+2. 圆括号在C中一般用于函数调用或者是作为子表达式来获得更高的优先级。而在这里，圆括号操作符只是一个操作符，和上述两者都无关（例如，可以用作对二位或高维数组的索引。因为[]操作符的操作数的数目是被限定只有一个）
+
+
+{%highlight CPP linenos%}
+#include <iostream>
+#include <cassert>
+
+class Matrix
+{
+    private:
+        int m_point[4][4];
+
+    public:
+        Matrix();
+        int& operator()(const int, const int);
+        friend std::ostream& operator<<(std::ostream&, const Matrix);
+};
+
+Matrix::Matrix()
+{
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            m_point[i][j] = 0;
+}
+
+/* 重载 输入参数为2个时 的一种()操作符 */
+int& Matrix::operator()(const int x, const int y)
+{
+    assert( x >= 0 && x < 4 && y >= 0 && y < 4);
+    return m_point[x][y];
+}
+
+std::ostream& operator<<(std::ostream &out, const Matrix obj)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            out << obj.m_point[i][j] << " ";
+        }
+        out << '\n';
+    }
+    return out;
+}
+
+int main()
+{
+    Matrix mat;
+
+    mat(0,0) = mat(1,1) = mat(2,2) = mat(3,3) = 1;
+    std::cout << mat;
+}
+{%endhighlight%}
+
+输出：
+
+
+{%highlight CPP linenos%}
+➜  parenthesis ./a.out 
+1 0 0 0 
+0 1 0 0 
+0 0 1 0 
+0 0 0 1 
+{%endhighlight%}
+
+注意：虽然()操作符非常灵活，但是请不要过多使用。因为，我们不能通过()给使用者太多有用的信息。它一般用于取多为数组的索引方法，其他的方法一般建议使用正常的成员函数来实现，这样更具有描述性。
+
+## 2.5 重载 类型转换 操作符
+
+虽然C++知道如何在内部的类型之间进行隐式转化，可是C++不知到用户自定义的类如何转化。
+
+假设我们有如下这个类：
+
+{%highlight CPP linenos%}
+#include <iostream>
+
+class Meter
+{
+    private:
+        int m_meter;
+
+    public:
+        Meter(int m)
+        {
+            m_meter = m;
+        }
+
+        int getMeter()
+        {
+            return m_meter;
+        }
+        /* 重载 int 类型转换符
+         * 注意：
+         *      1. 该重载函数的operator 与 int() 之间有个空格！
+         *      2. 该重载函数没有返回类型（C++默认你的类型是正确的, i.e. int）
+         */
+        operator int()
+        {
+            return m_meter;
+        }
+
+};
+
+class KiloMeter
+{
+    private:
+        int m_km;
+
+    public:
+        KiloMeter(int km)
+        {
+            m_km = km;
+        }
+
+        /* 重载自己定义的类的转换符 */
+        operator Meter()
+        {
+            return Meter(m_km * 1000);
+        }
+
+
+
+};
+
+void printLength(int m)
+{
+    std::cout << m << '\n';
+}
+
+void printMeter(Meter m)
+{
+    /* 重载类型转换符后，可以使用强制转换 */
+    std::cout << static_cast<int>(m) << '\n';
+}
+
+int main()
+{
+    Meter meter(100);
+
+    printLength(meter.getMeter());
+    /* 更简洁 */
+    printLength(meter);
+
+    KiloMeter km(100);
+    printMeter(km);
+
+}
+{%endhighlight%}
+
+注意：
+
+1. 重载函数的`operator` 与 类型(e.g. `int()`) 之间有个空格！
+2. 重载函数没有返回类型（C++默认你的类型是正确的, e.g. int）
+3. 重载类型转换符后，可以使用`static_cast<>`进行类型转换
+4. 类新转换也可以转换成自定义的类（例如这里的`KiloMeter`）
