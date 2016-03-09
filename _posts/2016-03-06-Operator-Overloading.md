@@ -7,6 +7,13 @@ categories:
 
 <!--more-->
 
+* * *
+Table of Content
+
+* TOC
+{:toc}
+* * *
+
 C++的操作符重载有以下几个注意点：
 
 1. 至少有一个操作数是用户自定义的类型（类）；
@@ -18,8 +25,7 @@ C++的操作符重载一般可以通过两种方法实现：
 * 通过`friend function`实现
 * 通过`class member function`实现
 
-
-# 1. 使用 `friend function` 进行操作符重载
+# 1. 使用 Friend Function进行操作符重载
 
 使用`friend function`进行操作符重载一般用于那些不会对该类型内部变量进行修改的情况。
 
@@ -366,7 +372,7 @@ int main()
  Oposite  (3, 3)  ->  (-3, -3)
 {%endhighlight%}
 
-# 2. 使用成员函数重载操作符
+# 2. 使用 成员函数 进行重载
 
 使用成员函数进行操作符重载一般用于那些会修改类的内部变量的操作符。
 
@@ -391,7 +397,7 @@ int main()
   * call (())
   * member selection (->)
 
-## 2.1 使用member function 实现某些操作符的重载
+## 2.1 使用 成员函数 重载 Friend Function 可以重载的操作符
 
 
 {%highlight CPP linenos%}
@@ -558,7 +564,7 @@ int main()
 2. `prefix`形式，我们返回的是该对象自己的一个引用；`postfix`形式，我们返回的是一个新的object，其内容为调用对象在调用前的内容；
 3. 我们在定义`postfix`形式的时候，直接使用之前已经定义过的`prefix`形式的代码。减少代码量并且降低出错的几率。
 
-## 2.3 重载下标符(subscriptor) []
+## 2.3 重载 下标索引 subscriptor []
 
 
 {%highlight CPP linenos%}
@@ -687,7 +693,7 @@ int main()
 
 注意：虽然()操作符非常灵活，但是请不要过多使用。因为，我们不能通过()给使用者太多有用的信息。它一般用于取多为数组的索引方法，其他的方法一般建议使用正常的成员函数来实现，这样更具有描述性。
 
-## 2.5 重载 类型转换 操作符
+## 2.5 重载类型转换操作符
 
 虽然C++知道如何在内部的类型之间进行隐式转化，可是C++不知到用户自定义的类如何转化。
 
@@ -775,3 +781,325 @@ int main()
 2. 重载函数没有返回类型（C++默认你的类型是正确的, e.g. int）
 3. 重载类型转换符后，可以使用`static_cast<>`进行类型转换
 4. 类新转换也可以转换成自定义的类（例如这里的`KiloMeter`）
+
+## 2.6  重载赋值操作符 = 
+
+要明白对于赋值的重载，需要知道赋值操作符和Copy构造函数的关系，浅拷贝和深度拷贝的关系。
+
+### 2.6.1 Assignment Operator VS Copy Constructor
+
+**Assignment Operator** 
+
+用于将值从某个对象拷贝到另一个**已经存在**的对象；
+
+**Copy Constructor**
+
+用于将值从某个对象拷贝到一个**新创建**的对象。一般有以下三种情况：
+
+1. 实例化一个对象的同时初始化之：
+
+        MyClass inst1(1);
+        MyClass inst2 = inst1;  // 调用copy constructor
+
+2.        通过值传递的某个对象。例如：
+  * 参数类型为该类的函数的调用，则会触发被传入的对象的`Copy Constructor`(因为它要创建一个临时的对象在这个函数里使用)
+  * 某个函数的返回类型为该类，则会触发被返回的对象的`Copy Constructor`
+
+从代码的逻辑上来看，这两者应该是基本一样的，它们只是在不同的时刻被调用了而已。如下面的例子：
+
+{%highlight CPP linenos%}
+#include <iostream>
+
+class Point
+{
+    private:
+        int m_x;
+        int m_y;
+        /* Copy Constructor 与 Assignment Overload 都会去调用的函数*/
+        void copyValue(const Point&);
+
+    public:
+        Point(int, int);
+
+        /* Copy Constructor */
+        Point(const Point&);
+
+        /* Assignment Overload */
+        Point& operator=(const Point&);
+
+        friend std::ostream& operator<<(std::ostream&, Point);
+};
+
+Point::Point(int x, int y)
+{
+    m_x = x;
+    m_y = y;
+}
+
+void Point::copyValue(const Point &srcObj)
+{
+    m_x = srcObj.m_x;
+    m_y = srcObj.m_y;
+}
+
+/* Copy Constructor 
+ * 注意：输入参数为Point的引用，这是因为如果不是引用而是值传递的话，
+ *       在该函数（Copy Constructor）被调用的时候，会触发传入的对象
+ *       的Copy Constructor(根据Copy Constructor的触发场合)，这又会
+ *       再次触发自己的Copy Constructor……
+ * 注意：这个函数没有返回值
+ */
+Point::Point(const Point &srcObj)
+{
+    copyValue(srcObj);
+}
+
+/* Assignment Overload */
+Point& Point::operator=(const Point &srcObj)
+{
+    /* 由于C++中自己赋值给自己是允许的，这种情况下应该直接返回自己，
+     * 否则，在该对象有动态分配的内存的情况下会引起问题
+     */
+    if (this != &srcObj)
+    {
+        m_x = srcObj.m_x;
+        m_y = srcObj.m_y;
+    }
+    return *this;
+}
+
+
+
+std::ostream& operator<<(std::ostream &out, Point point)
+{
+    out << "(" << point.m_x << ", " << point.m_y << ") ";
+    return out;
+}
+
+int main()
+{
+    Point point(2,2);
+    Point p(1,1);
+    std::cout << p << '\n';
+    p = point;
+    std::cout << p << '\n';
+
+}
+{%endhighlight%}
+
+输出：
+
+{%highlight CPP linenos%}
+(1, 1) 
+(2, 2) 
+{%endhighlight%}
+
+注意：
+
+1. 由于`Copy Constructor`与`Assignment Overload`的代码有大部分是重复的，因此将这部分代码放在一个private的成员函数中；
+2. `Copy Constructor`与其他构造函数类似，没有返回值。注意：其输入参数为该类的引用；
+3. `Assignment Overload`的返回值为调用对象自身的引用（为了chaining），其输入参数可以是该类的对象实体或者是引用（如果是实体，则在传入参数的时候会调用传入对象的`Copy Constructor`）。注意，由于C++允许对象赋值给自己，这种情况下`Assignment Overload`函数应该直接返回对象自身。因为，一旦该对象中有动态分配的内存，赋值给自己是很危险的(这个判断在`Copy Constructor`中是不需要的)。
+
+C++既提供一个默认的`Copy Constructor`, 也提供一个默认的`Assignment Operator`. 然而，由于C++编译器不知到你定义的类的细节，因此这两个默认的函数做的Copy动作比较简单，仅仅使用member-wise copy(浅拷贝)。
+
+### 2.6.2  Shallow Copy VS Deep Copy
+
+#### 2.6.2.1 Shallow Copy
+
+浅拷贝是把某个类的对象的成员变量按值赋值给另一个同类的对象。
+
+当类成员中没有指向动态分配的内存的情况下，浅拷贝的行为模式是没问题的。然而，如果与动态内存有关系，则会导致很大的问题，因为浅拷贝仅仅拷贝了内存的地址（指针值传递）。
+
+{%highlight CPP linenos%}
+#include <iostream>
+#include <string.h>
+#include <stdlib.h>
+
+class MyString
+{
+    private:
+        int m_length;
+        char *m_string;
+
+    public:
+        MyString(const char *string = "");
+        ~MyString();
+
+        char* getString();
+        int getLength();
+};
+
+MyString::MyString(const char *string)
+{
+    m_length = strlen(string) + 1;
+    m_string = new char[m_length];
+    strncpy(m_string, string, m_length);
+    m_string[m_length-1] = '\0'; // Make sure m_string is terminated by '\0'
+}
+
+MyString::~MyString()
+{
+    delete[] m_string;
+    m_string = NULL;
+}
+
+int MyString::getLength()
+{
+    return m_length;
+}
+
+char* MyString::getString()
+{
+    return m_string;
+}
+
+int main()
+{
+    MyString hello("Hello");
+    MyString insidious = hello;
+    std::cout << hello.getString() << '\n';
+    // Crash!!! Double free or corruption!
+    // 因为两个对象的m_string 指向同一个内存地址，在析构的时候被重复free
+}
+{%endhighlight%}
+
+上面的代码会在运行时报如下的错误：
+
+{%highlight CPP linenos%}
+➜  shallow_deep_copy ./a.out  
+Hello
+*** glibc detected *** ./a.out: double free or corruption (fasttop): 0x08454a10 ***
+{%endhighlight%}
+
+这是因为两个对象的`m_string`指向了同一个内存地址，在析构的时候被重复free。其根本原因是由于初始化`insidious`的时候调用的是C++默认的(浅拷贝) `copy constructor`，其中的指针是值传递的。
+
+#### 2.6.2.2 Deep Copy
+
+深度拷贝指被赋值的对象拥有其独立的成员变量和其成员变量指向的内存空间。
+
+深度拷贝需要程序员重载C++默认的`Copy Consturctor`和`Assignment Operator`.
+
+{%highlight CPP linenos%}
+#include <iostream>
+#include <string.h>
+#include <stdlib.h>
+
+class MyString
+{
+    private:
+        int m_length;
+        char *m_string;
+        /* 共用copy函数 */
+        void deepCopy(const MyString&);
+
+    public:
+        MyString(const char *string = "");
+        ~MyString();
+
+        /* copy constructor*/
+        MyString(const MyString&);
+
+        /* assignment operator */
+        MyString& operator=(const MyString&);
+
+        char* getString();
+        int getLength();
+};
+
+MyString::MyString(const char *string)
+{
+    m_length = strlen(string) + 1;
+    m_string = new char[m_length];
+    strncpy(m_string, string, m_length);
+    m_string[m_length-1] = '\0'; // Make sure m_string is terminated by '\0'
+}
+
+MyString::~MyString()
+{
+    delete[] m_string;
+    m_string = NULL;
+}
+
+int MyString::getLength()
+{
+    return m_length;
+}
+
+char* MyString::getString()
+{
+    return m_string;
+}
+
+void MyString::deepCopy(const MyString &obj)
+{
+    m_length = obj.m_length;
+
+    if (obj.m_string)
+    {
+        m_string = new char[m_length];
+        strncpy(m_string, obj.m_string, m_length);
+    }
+    else
+    {
+        m_string = 0;
+    }
+}
+
+/* copy constructor*/
+MyString::MyString(const MyString &obj)
+{
+    deepCopy(obj);
+}
+
+/* assignment operator */
+MyString& MyString::operator=(const MyString &obj)
+{
+    /* 注意：这里对赋值两边对象是否相同需要判断 */
+    if (this != &obj)
+    {
+        /* 需要先清除已分配的内存
+         * 否则，每当我们进行赋值的时候，就会产生一定的内存泄漏！
+         * （new和delete要成对出现！）
+         */
+        delete[] m_string;
+        deepCopy(obj);
+    }
+    return *this;
+}
+
+int main()
+{
+    MyString hello("Hello");
+    MyString insidious = hello;
+    std::cout << hello.getString() << '\n';
+}
+{%endhighlight%}
+
+注意，`Copy Constructor`与`Assignment Operator`的实现有以下几个细微却重要的区别：
+
+1. 后者在入口处有判断是否赋值操作符的两边的对象是同一个。这是为了避免之后的操作中由memory alias引起的错误。例如：
+  * `strncpy`的source和dest是同一个内存可能导致问题；
+  * `delete[] m_string`会将assigning对象的m_string指向的内存空间也释放掉！
+2. 后者先释放已分配的内存。如果不这么做会导致每一次的赋值操作都有内存泄漏；
+3. 返回`*this`的引用，为了chainning.
+
+### 2.6.3 Disable Copy
+
+如果想disable C++默认的`Copy Constructor`与`Assignment Operator`，只需要：重载它们作为`private`成员函数。例如：
+
+{%highlight CPP linenos%}
+class MyString
+{
+    private:
+        int m_length;
+        char *m_string;
+
+        /* copy constructor*/
+        MyString(const MyString&);
+        /* assignment operator */
+        MyString& operator=(const MyString&);
+
+    public:
+        // reset of code
+};
+{%endhighlight%}
