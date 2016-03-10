@@ -146,8 +146,6 @@ MyData::MyData(int year, int month, int day)
     m_day = day;
 }
 
-/* 注意：这里第二个操作数可以是引用也可以不是。个人认为不作为引用比较好，
-         因为有时候要输出的对象是anonymous object，是个rvalue，没有引用！*/
 std::ostream& operator<<(std::ostream &out, const MyData &obj)
 {
     out << "-------\nDate Info\n-------\n"
@@ -200,6 +198,77 @@ Month: 3
 Day: 6
 
 {%endhighlight%}
+
+注意, 这里对于`<<`的重载的第二个输入参数是类对象的引用。这样子造成一个问题是：如果当要输出的对象只是个anonymous object, 也就意味着该对象只是一个rvalue（例如`(i+j)`返回的对象）, 是没有引用的. 这样就不能直接用于这种重载后的`<<`操作符了。
+
+于是有的人（我）可能想将该参数作为类的对象的值进行定义，可是这会引发更大的问题：当对象中有成员变量是动态分配的内存的指针时，会容易发生crash！见下面的例子：
+
+{%highlight CPP linenos%}
+
+#include <iostream>
+#include <string.h>
+#include <stdlib.h>
+
+class MyString
+{
+    private:
+        char *m_string;
+        int m_length;
+    public:
+        MyString(const char *string = "");
+        ~MyString();
+        /* 这里使用类的对象实体作为输入参数会触发该类的拷贝构造函数
+         * 如果没有定义拷贝构造函数，则会使用C++默认的，浅拷贝
+         * 如果该类成员变量有指向动态内存的指针，并且在析构函数中被释放，则会导致double free的crash
+         */
+        friend std::ostream& operator<<(std::ostream&, const MyString);
+        /* 正确的做法是传入该对象的引用 */
+        //friend std::ostream& operator<<(std::ostream&, const MyString&);
+};
+
+MyString::MyString(const char *string)
+{
+    if (string != NULL)
+    {
+        m_length = strlen(string) + 1;
+        m_string = new char[m_length];
+        if (m_string != NULL)
+        {
+            strncpy(m_string, string, m_length);
+            m_string[m_length-1] = '\0';
+        }
+    }
+}
+
+MyString::~MyString()
+{
+    delete[] m_string;
+    m_string = NULL;
+}
+
+//std::ostream& operator<<(std::ostream &out, const MyString &obj)
+std::ostream& operator<<(std::ostream &out, const MyString obj)
+{
+    out << obj.m_string;
+    return out;
+}
+
+int main()
+{
+    MyString obj("hello");
+    std::cout << obj << '\n';
+}
+{%endhighlight%}
+
+输出：
+
+{%highlight CPP linenos%}
+➜  io_operator ./a.out 
+hello
+*** glibc detected *** ./a.out: double free or corruption (fasttop): 0x08d45a10 ***
+{%endhighlight%}
+
+因此，结论还是使用引用比较安全。
 
 ## 1.3 重载比较操作符（==, !=, <, <=, >, >=）
 
@@ -317,7 +386,7 @@ class Point
         Point(int x = 0, int y = 0);
         friend Point operator-(const Point &point);
         friend bool operator!(const Point &point);
-        friend std::ostream& operator<<(std::ostream &out, Point point);
+        friend std::ostream& operator<<(std::ostream &out, Point &point);
 };
 
 Point::Point(int x, int y)
@@ -336,10 +405,7 @@ bool operator!(const Point &point)
     return (point.m_x == 0 && point.m_y == 0);
 }
 
-/* 注意： 这里不同与之前重载IO那里第二个输入参数为引用，这里第二个输入参数为类的对象。
-          之所以这样设置的原因是，如果当要输出的对象只是个anonymous object, 也就意味
-          着该对象只是一个rvalue（例如这里"-"返回的对象）, 是没有引用的！*/
-std::ostream& operator<<(std::ostream &out, Point point)
+std::ostream& operator<<(std::ostream &out, Point &point)
 {
     out << " (" << point.m_x << ", " << point.m_y << ") ";
     return out;
@@ -358,11 +424,9 @@ int main()
         std::cout << some_point << "is origin point!\n";
     }
 
-    std::cout << "Oposite " << some_point << " -> " << -some_point << '\n';
+    std::cout << "Oposite " << some_point << " -> " << OP << '\n';
 }
 {%endhighlight%}
-
-注意, 这里对于`<<`的重载不同与之前重载IO那里第二个输入参数作为类对象的引用，这里第二个输入参数直接是类的对象。之所以这样设置的原因是，如果当要输出的对象只是个anonymous object, 也就意味着该对象只是一个rvalue（例如这里"-"返回的对象）, 是没有引用的！
 
 以上代码输出：
 
