@@ -344,3 +344,205 @@ magdodo
 kinoko
 {%endhighlight%}
 
+# 3. 容器类 （Container Class）
+
+容器类是一种持有和管理某个其他类的实例的一种特殊的类。
+
+容器类一般都会至少提供以下这些功能：
+
+1. 创建一个空的容器（通过构造函数）
+2. 插入新的对象到容器
+3. 从容器中删除对象
+4. 记录当前容器内对象的数量
+5. 清空容器
+6. 访问存储的对象
+7. 对对象排序（可选）
+
+容器类一般有两种实现方式：
+
+* **Value Containers** 以组合（composition）的方式存储所持有的对象（因此，负责创建和销毁这些对象）；
+
+* **Reference Containers** 以聚类的方式存储持有对象的指针或引用
+
+C++的容器类通常只持有一种类（型）的对象。如果需要一个既持有整形对象，又持有double对象的容器，你就必须写两个容器，或者使用模板。
+
+## 3.1 一个数组容器类
+
+array.h
+
+{% highlight CPP linenos %}
+#include <iostream>
+
+class IntArray
+{
+    private:
+        int m_length;
+        int *m_elements;
+        void Allocate(int length);                      // common function for reuse
+
+    public:
+        IntArray();                                     // default constructor
+        IntArray(int length);                           // construct "length" array
+        ~IntArray();
+        int GetLength();                                 
+        void Erase();
+        void Reallocate(int length);                    // Reallocate a fixed length array and erase all old data
+        void Resize(int length);                        // Resize current array and keep the data
+        void Insert(int value, int index);              // Insert a new value at index, all value after index(include the one at index) will shitf one bit afterwards if any
+        void Remove(int index);                         // Delete the value at index
+        int& operator[](int index);                     // Overload operator[] for reference the object in array
+};
+{% endhighlight %}
+
+array.cpp
+
+{% highlight CPP linenos %}
+
+#include <cassert>
+#include "array.h"
+
+IntArray::IntArray()
+    :m_length(0)
+    ,m_elements(NULL)
+{
+}
+
+IntArray::IntArray(int length)
+{
+    Allocate(length);
+}
+
+IntArray::~IntArray()
+{
+    delete[] m_elements;
+}
+
+void IntArray::Allocate(int length)
+{
+    assert(length >= 0);
+    int *newElements = new int[length];
+    if (newElements != NULL)
+    {
+        m_length = length;
+        m_elements = newElements;
+    }
+}
+
+int IntArray::GetLength()
+{
+    return m_length;
+}
+
+void IntArray::Erase()
+{
+    delete[] m_elements;
+    m_elements = NULL;
+    m_length = 0;
+}
+
+void IntArray::Reallocate(int length)
+{
+    Erase();
+    Allocate(length);
+}
+
+void IntArray::Resize(int length)
+{
+    assert(length >= 0);
+    int *newElements = new int[length];
+    if (newElements != NULL)
+    {
+        int copyLength = (length > m_length)? m_length:length;
+        --copyLength;
+        for (;copyLength >= 0; --copyLength)
+        {
+            newElements[copyLength] = m_elements[copyLength];
+        }
+        Erase();
+        m_elements = newElements;
+        m_length = length;
+    }
+}
+
+void IntArray::Insert(int value, int index)
+{
+    assert(index >= 0 && index <= m_length);
+    int *newElements = new int[m_length + 1];
+    if (newElements != NULL)
+    {
+        int i;
+        for (i = 0; i <= index-1; i++)
+        {
+            newElements[i] = m_elements[i];
+        }
+        newElements[index] = value;
+        for (i = index+1; i <= m_length; i++)
+        {
+            newElements[i] = m_elements[i-1];
+        }
+        delete[] m_elements;
+        m_length++;
+        m_elements = newElements;
+    }
+}
+
+void IntArray::Remove(int index)
+{
+    assert(index >= 0 && index < m_length);
+    int *newElements = new int[m_length-1];
+    int i;
+    for (i = 0; i < index; i++)
+    {
+        newElements[i] = m_elements[i];
+    }
+    for (i = index+1; i < m_length; i++)
+    {
+        newElements[i-1] = m_elements[i];
+    }
+    delete[] m_elements;
+    --m_length;
+    m_elements = newElements;
+}
+
+int& IntArray::operator[](int index)
+{
+    assert(index >= 0 && index < m_length);
+    return m_elements[index];
+}
+
+/* MAIN */
+using namespace std;
+ 
+int main()
+{
+    // Declare an array with 10 elements
+    IntArray cArray(10);
+ 
+    // Fill the array with numbers 1 through 10
+    for (int i=0; i<10; i++)
+        cArray[i] = i+1;
+ 
+    // Resize the array to 8 elements
+    cArray.Resize(8);
+ 
+    // Insert the number 20 before the 5th element
+    cArray.Insert(20, 5);
+ 
+    // Remove the 3rd element
+    cArray.Remove(3);
+ 
+    // Print out all the numbers
+    for (int j=0; j<cArray.GetLength(); j++)
+        cout << cArray[j] << " ";
+    cout << '\n';
+ 
+    return 0;
+}
+{% endhighlight %}
+
+输出：
+
+{% highlight CPP %}
+➜  container ./a.out 
+1 2 3 5 20 6 7 8 
+{% endhighlight %}
