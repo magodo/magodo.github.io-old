@@ -305,9 +305,6 @@ A->B->C
 |**private**|无影响|可访问A中的public变量->不能访问|可访问A中的public/protected变量->不能访问|
 |===
 
-
-  和对B的影响相同
-
 实际上，对于一个特定的类，只要记住三点：
 
 1. 类对于自己定义的成员，总是具有访问权限；
@@ -372,4 +369,99 @@ C++中有两种方式在子类中隐藏基类中`public`的函数为`private`/`p
 
 以上这些，对于成员变量也是一样的道理。
 
+# 5. 多重继承
+
+## 5.1 多个基类中有相同签名的函数
+
+如果子类调用的函数是继承在它的基类中的，并且它所继承的多个基类中不止一处定义了该函数，则编译器会报错。
+
+   例如：
+
+        #include <iostream>
+
+        class A
+        {
+            public:
+                void Echo()
+                {
+                    std::cout << "This is A\n";
+                }
+        };
+        class B
+        {
+            public:
+                void Echo()
+                {
+                    std::cout << "This is B\n";
+                }
+        };
+        class C: public A, public B
+        {
+        };
+
+        int main()
+        {
+            C obj;
+
+            obj.Echo();
+        }
+
+   会编译报错：
+
+        a.cpp: In function ‘int main()’:
+        a.cpp:34:9: error: request for member ‘Echo’ is ambiguous
+        a.cpp:21:14: error: candidates are: void B::Echo()
+        a.cpp:13:14: error:                 void A::Echo()
+
+   一种workaround是在调用的时候使用`scope resolver`。但是，这种方式会使代码变得难以维护。
+
+## 5.2 菱形继承(diamond inheritance)
+
+如下图所示：
+
+![diamond](/images/cpp/diamond-inheritance.png)
+
+这种菱形继承会引发很多问题，例如： 由于B和C都继承自A，因此他们都保存了一份A的数据。当D调用定义在A中的成员变量或函数时就会产生歧义而报错。
+
+{%highlight CPP linenos%}
+#include <iostream>
+
+class A
+{
+    public:
+        void Echo()
+        {
+            std::cout << "In A\n";
+        }
+};
+
+class B: public A
+{
+};
+class C: public A
+{
+};
+class D: public B, public C
+{
+};
+
+int main()
+{
+    D obj;
+    obj.Echo();
+}
+{%endhighlight%}
+
+编译器报错：
+
+{%highlight CPP linenos%}
+diamond.cpp: In function ‘int main()’:
+diamond.cpp:32:9: error: request for member ‘Echo’ is ambiguous
+diamond.cpp:13:14: error: candidates are: void A::Echo()
+diamond.cpp:13:14: error:                 void A::Echo()
+{%endhighlight%}
+
+事实上，很多实际问题都可以通过single inheritance就可易解决。很多OOP语言（例如 Smalltalk, PHP）都不支持多重继承。其他的现代语言例如JAVA和C#对于正常的类也只支持single inheritance, 只对接口类允许多重继承。
+
+不过，在有的场合下不可避免的要使用到多重继承。这时候，可以通过virtual继承的方式规避上述的菱形继承问题。
 
