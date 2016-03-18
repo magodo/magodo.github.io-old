@@ -417,11 +417,13 @@ C++中有两种方式在子类中隐藏基类中`public`的函数为`private`/`p
 
 ## 5.2 菱形继承(diamond inheritance)
 
-如下图所示：
+如下图所示是所谓的菱形继承关系：
 
 ![diamond](/images/cpp/diamond-inheritance.png)
 
-这种菱形继承会引发很多问题，例如： 由于B和C都继承自A，因此他们都保存了一份A的数据。当D调用定义在A中的成员变量或函数时就会产生歧义而报错。
+这种菱形继承会引发很多问题，例如： 由于B和C都继承自A，因此他们都保存了一份A的数据。当D调用定义在A中的成员变量或函数时就会产生歧义而报错。形成如下图所示的情况：
+
+![diamond](/images/cpp/diamond-multi-copy.png)
 
 {%highlight CPP linenos%}
 #include <iostream>
@@ -461,7 +463,182 @@ diamond.cpp:13:14: error: candidates are: void A::Echo()
 diamond.cpp:13:14: error:                 void A::Echo()
 {%endhighlight%}
 
+
 事实上，很多实际问题都可以通过single inheritance就可易解决。很多OOP语言（例如 Smalltalk, PHP）都不支持多重继承。其他的现代语言例如JAVA和C#对于正常的类也只支持single inheritance, 只对接口类允许多重继承。
 
 不过，在有的场合下不可避免的要使用到多重继承。这时候，可以通过virtual继承的方式规避上述的菱形继承问题。
 
+# 6. 虚拟基类(virtual base class)
+
+C++中解决上面提到的“菱形继承”问题的一种方式就是通过“虚拟基类”，使得上例中的D在被创建之后，只存在一份A的数据。
+
+先看一个“菱形继承”的例子：
+
+{%highlight CPP linenos%}
+
+#include <string>
+#include <iostream>
+#include <math.h>
+
+class Machine
+{
+    public:
+        Machine()
+        {
+            std::cout << "I'm a machine!\n";
+        }
+};
+
+class Calculator: public Machine
+{
+    private:
+        double m_ips;
+    public:
+        Calculator(double ips)
+            :Machine()
+            ,m_ips(ips)
+        {
+            std::cout << ips << " \"addition\" per second\n";
+        }
+};
+
+class StorageDevice: public Machine
+{
+    private:
+        int m_space;
+    public:
+        StorageDevice(int space)
+            :Machine()
+            ,m_space(space)
+        {
+            std::cout << "Storage space: " << space << "GB" << "\n";
+        }
+};
+
+class PersonalComputer: public Calculator, public StorageDevice
+{
+    private:
+        std::string m_os;
+    public:
+        PersonalComputer(double ips, int space, std::string os)
+            :Calculator(ips)
+            ,StorageDevice(space)
+            ,m_os(os)
+    {
+        std::cout << "This is a " << os << "PC\n";
+    }
+};
+
+int main()
+{
+    /* Four core 2GHz one adder machine supporting SIMD */
+    PersonalComputer pc(pow(20, 9)*4*4, 240, "Linux");
+}
+{%endhighlight%}
+
+输出：
+
+{%highlight CPP linenos%}
+➜  virtual_base_class ./a.out 
+I'm a machine!
+8.192e+12 "addition" per second
+I'm a machine!
+Storage space: 240GB
+This is a LinuxPC
+{%endhighlight%}
+
+可见，"Machine"被初始化了两次。
+
+为了使"Machine"的数据只保留一份，需要在"Calculator"和"StorageDevice"继承的时候使用“虚拟基类”的继承方式。只需要在继承类型（例如：`public`）前加上`virtual`即可：
+
+{%highlight CPP linenos%}
+class Calculator: virtual public Machine
+{
+...
+}
+{%endhighlight%}
+
+这里存在一个问题，就是`PersonalComputer`在实例化的时候，怎样调用`Machine`的构造函数？是通过`Calculator`还是`StorageDevice`？答案是：`PersonalComputer`本身负责对于`Machine`的构造函数的调用。这是一个罕见的调用基类的基类的函数的例子：
+
+{%highlight CPP linenos%}
+
+#include <string>
+#include <iostream>
+#include <math.h>
+
+class Machine
+{
+    public:
+        Machine()
+        {
+            std::cout << "I'm a machine!\n";
+        }
+};
+
+class Calculator: virtual public Machine
+{
+    private:
+        double m_ips;
+    public:
+        Calculator(double ips)
+            :Machine()
+            ,m_ips(ips)
+        {
+            std::cout << ips << " \"addition\" per second\n";
+        }
+};
+
+class StorageDevice: virtual public Machine
+{
+    private:
+        int m_space;
+    public:
+        StorageDevice(int space)
+            :Machine()
+            ,m_space(space)
+        {
+            std::cout << "Storage space: " << space << "GB" << "\n";
+        }
+};
+
+class PersonalComputer: public Calculator, public StorageDevice
+{
+    private:
+        std::string m_os;
+    public:
+        PersonalComputer(double ips, int space, std::string os)
+            :Calculator(ips)
+            ,StorageDevice(space)
+            ,m_os(os)
+            ,Machine()    /* 调用基类的虚拟基类的构造函数（少有的跨基类调用函数的情形） 
+                           * 这里虽然Machine的构造函数看起来是最后调用的，但是实际上它是被最先调用的，以保证它是在其他非虚拟类之前被构造完成
+                           */
+    {
+        std::cout << "This is a " << os << " PC\n";
+    }
+};
+
+int main()
+{
+    /* Four core 2GHz one adder machine supporting SIMD */
+    PersonalComputer pc(pow(20, 9)*4*4, 240, "Linux");
+}
+{%endhighlight%}
+
+输出：
+
+{%highlight CPP linenos%}
+➜  virtual_base_class ./a.out        
+I'm a machine!
+8.192e+12 "addition" per second
+Storage space: 240GB
+This is a Linux PC
+{%endhighlight%}
+
+这里有几个注意点：
+
+1. 虚拟基类的构造函数会先于继承它的非虚拟类的构造（即使它在初始化列表中处在后面，如上例）；
+2. 继承虚拟基类的类（例如`Calculator`）在其构造函数中也应该调用虚拟基类的构造函数：
+  1. 当创建`Calculator`对象的时候，`virtual`关键字被忽略，会先调用`Machine`的构造函数，再调用`Calculator`的初始化列表和构造函数函数体；
+  2. 当创建`PersonalComputer`对象的时候，`Calculator`和`StorageDevice`中对`Machine`的构造函数的调用被忽略，而应该由`PersonalComputer`类负责对`Machine`构造函数的调用；
+3. 如果一个类在其依赖链上有多个继承自虚拟基类的基类，那么对于虚拟基类的构造函数的调用，都由最下面的子类来负责。在这个例子中就是`PersonalComputer`。
