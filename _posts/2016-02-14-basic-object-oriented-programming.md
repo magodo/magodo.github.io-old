@@ -159,7 +159,7 @@ public:
 
 NOTE:
 
-1. These two constructors can coexist peacefully in the same class due to function overloading. In fact, you can define as many constructors as you want, so long as each has a unique __signature__ (number and type of parameters).
+1. These two constructors can coexist peacefully in the same class due to function overloading. In fact, you can define as many constructors as you want, so long as each has a unique __signature__ (number and type of parameters, return type).
 2. We can give each parameter a __default__ value at _parameter list_ in method definition
 
 ### Method to use constructor
