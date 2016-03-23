@@ -451,3 +451,66 @@ Base destructor
 
 有些情况下需要使用某个虚函数在基类中的版本，只要直接使用`::`符号来显示地指定基类和相应函数即可。
 
+# 4. 虚函数表(virtual table)
+
+## 4.1 函数的 Early Binding 与 Late Binding
+
+所谓的*Early Binding*在这里是指，在编译时可以确定函数的虚拟内存地址的情况。一般就是直接调用函数的情况。
+
+所谓的*Late Binding*在这里是指，在编译时无法确定函数的实际地址。比如说有一个指向某个函数原型的函数指针，在运行时可能被赋予不同的函数的地址，因此只有在运行时才能确定。
+
+## 4.2 虚函数表
+
+虚函数的实现借助于**虚函数表**。虚函数表实质上使用的是上面提到的Late Binding。
+
+首先，每一个使用虚函数（或者继承自某个定义了虚函数的类）的类都有它自己的一个虚函数表。这个表仅仅是一个由编译器在编译时创建的静态的数组。一个虚函数表为每一个虚函数保留一个表项，保存的是指向此类能够得到的该函数most-derived版本的指针。
+
+其次，编译器还会为most-base的类加入一个public的隐藏指针，我们称之为`*__vptr`. `*__vptr`是在类的实例创建的时候被自动创建的(如果这个类是个子类，那这个指针继承自基类)，指向该类的虚函数表。不同于`*this`指针（只是编译器用来解析自引用的函数参数），`*__vptr`是一个真实的指针。
+
+举个例子：
+
+{%highlight CPP linenos%}
+ass Base
+{
+public:
+    FunctionPointer *__vptr;    // 仅仅是模仿编译器的动作
+    virtual void function1() {};
+    virtual void function2() {};
+};
+ 
+class D1: public Base
+{
+public:
+    virtual void function1() {};
+};
+ 
+class D2: public Base
+{
+public:
+    virtual void function2() {};
+};
+{%endhighlight%}
+
+由于这里有三个类，因此编译器会创建3个虚函数表。
+
+同时，这里为了模仿编译器为most-base的类创建的隐藏指针，在上面的例子中定义了该指针。因此，当Base创建一个对象时，它会有一个指向Base的虚函数表的指针；当D1或者D2创建一个对象时，它们也会有一个指向各自虚函数表的指针。
+
+这个例子的三个virtual table如下图所示(右边部分)：
+
+![vtable](/images/cpp/vtable.png)
+
+这时候，对于下面的代码：
+
+{%highlight CPP linenos%}
+int main()
+{
+    D1 cClass;
+    Base *pClass = &cClass;
+    pClass->function1();
+}
+{%endhighlight%}
+
+首先，*pClass*是指向Base的指针，因此它只指向i*cClass*中Base的部分。同时，由于`*__vptr`是Base的一部分，因此，*pClass*可以访问的到。然而，因为*cClass*中的`*__vptr`虽然继承自基类，但是其值实际指向D1的虚函数表。因此，最终*pClass*是指向D1的虚函数表，因此调用的是D1虚函数表中的function1，也即D1::function1.
+
+
+
