@@ -455,9 +455,9 @@ Base destructor
 
 ## 4.1 函数的 Early Binding 与 Late Binding
 
-所谓的*Early Binding*在这里是指，在编译时可以确定函数的虚拟内存地址的情况。一般就是直接调用函数的情况。
+所谓的**Early Binding**在这里是指，在编译时可以确定函数的虚拟内存地址的情况。一般就是直接调用函数的情况。
 
-所谓的*Late Binding*在这里是指，在编译时无法确定函数的实际地址。比如说有一个指向某个函数原型的函数指针，在运行时可能被赋予不同的函数的地址，因此只有在运行时才能确定。
+所谓的**Late Binding**在这里是指，在编译时无法确定函数的实际地址。比如说有一个指向某个函数原型的函数指针，在运行时可能被赋予不同的函数的地址，因此只有在运行时才能确定。
 
 ## 4.2 虚函数表
 
@@ -511,6 +511,160 @@ int main()
 {%endhighlight%}
 
 首先，*pClass*是指向Base的指针，因此它只指向i*cClass*中Base的部分。同时，由于`*__vptr`是Base的一部分，因此，*pClass*可以访问的到。然而，因为*cClass*中的`*__vptr`虽然继承自基类，但是其值实际指向D1的虚函数表。因此，最终*pClass*是指向D1的虚函数表，因此调用的是D1虚函数表中的function1，也即D1::function1.
+
+# 5. 抽象函数 抽象基类 接口类
+
+# 5.1 抽象函数和抽象基类
+
+抽象函数(abstract function)也称为纯虚函数(pure virtual function)，代表没有函数体定义的虚函数。抽象函数仅仅作为一个"占位符"，需要由子类来实现其定义。
+
+创建一个抽象函数只需要简单地声明为虚拟函数，并且赋值为0：
+
+{%highlight CPP linenos%}
+#include <iostream>
+
+class Base
+{
+    public:
+        /* 普通函数 */
+        const char* SayHi() {return "Hi";}
+        /* 普通虚函数 */
+        virtual const char* GetName() { return "Base";}
+        /* 抽象函数 */
+        virtual int GetValue() = 0;
+};
+
+int main()
+{
+    Base obj;
+}
+{%endhighlight%}
+
+这个文件在编译时报错：
+
+    bstract_function.cpp: In function ‘int main()’:
+    01_abstract_function.cpp:23:10: error: cannot declare variable ‘obj’ to be of abstract type ‘Base’
+    01_abstract_function.cpp:10:7: note:   because the following virtual functions are pure within ‘Base’:
+    01_abstract_function.cpp:18:21: note:   virtual int Base::GetValue()
+
+可见，抽象函数有两个注意点：
+
+1. 一个类中只要有至少一个抽象函数，这个类就是一个**抽象基类**，也就无法被实例化；
+2. 继承自抽象基类的子类必须要定义基类中的所有抽象函数(包括private)，否则该子类也会被认为是一个抽象基类，因此就无法被实例化。这样可以保证所有基类中期望子类实现的函数都被实现了。
+
+所以，抽象基类的适用条件为：
+
+1. 该类不希望被实例化；
+2. 该类只定义某些接口的原型，实际的实现需要由子类定义。
+
+## 5.2 抽象基类的另一个例子
+
+{%highlight CPP linenos%}
+class Animal
+{
+    protected:
+        std::string m_name;
+
+        /* 这里构造函数使用protected是为了防止别人直接创建Animal对象 */
+        Animal(std::string name)
+            :m_name(name)
+        {}
+    public:
+        virtual std::string Speak()
+        {
+            return "???";
+        }
+        std::string GetName()
+        {
+            return m_name;
+        }
+};
+{%endhighlight%}
+
+对于上面这个Animal类，是一个典型的用于抽象基类的例子。我们上面的做法中并没有使用抽象基类来实现它，而是：
+
+* 为了防止它被实例化，将其构造函数访问权限设为`protected`;
+* 为了让子类实现其`Speak`函数，将其定义为虚函数
+
+这样存在一个问题是, 设想一下我们有下面这个子类：
+
+{%highlight CPP linenos%}
+class Cow: public Animal
+{
+    public:
+        Cow(std::string name)
+            :Animal(name)
+        {}
+};
+{%endhighlight%}
+
+在这个Cow类里，我们没有定义`Speak`函数。因此，它的对象实际会调用Animal中定义的`Speak`。这是我们不希望的。我们希望的情况是，强制Cow实现`Speak`函数，否则无法实例化。
+
+因此，更好的实现方式当然是通过抽象基类的方法来做：
+
+{%highlight CPP linenos%}
+class Animal
+{
+    private:
+        std::string m_name;
+
+    public:
+        /* 不需要将构造函数设为protected以防止被实例化 */
+        Animal(std::string name)
+            :m_name(name)
+        {}
+        std::string GetName()
+        {
+            return m_name;
+        }
+
+        /* 抽象函数 */
+        virtual std::string Speak() = 0;
+};
+{%endhighlight%}
+
+这样，Animal由于包含一个抽象函数，因此现在是一个抽象基类。如果Cow中没有定义`Speak`，那么Cow也被认为是一个抽象基类，无法被实例化。
+
+# 5.3 接口类(interface class)
+
+**接口类**是一种没有成员变量，并且所有成员函数都是抽象函数的类。
+
+接口类常被用于当你想定义子类需要实现某些功能，但是将具体的实现细节由子类自己去定义的场合。
+
+接口类的命名常以字母"I"开头，例如：
+
+{%highlight CPP linenos%}
+class IErrorLog
+{
+    public:
+        virtual bool OpenLog(const char *strFilename) = 0;
+        virtual bool CloseLog() = 0;
+        virtual bool WriteError(const char *strErrorMessage) = 0;
+};
+{%endhighlight%}
+
+基于该类，你可以定义一个名为"FileErrorLog"的子类，分别实现`OpenLog`为打开一个文件，`CloseLog`为关闭该文件，`WriteError`为向该文件写入log信息；也可以定义一个名为"ScreenErrorLog"的子类，`OpenLog`和`CloseLog`都为空，`WriteError`为弹出一个包含错误log的对话框。
+
+在使用由IErrorLog继承出来的子类实例化的对象时，我们可以将该对象以指向IErrorLog的指针或引用的方式进行传递，从而可以灵活地适用于所有符合IErrorLog接口定义的子类。
+
+例如：
+
+{%highlight CPP linenos%}
+/* 这里传入的是IErrorLog, 增加了灵活性 */
+double MySqrt(double value, IErrorLog &log)
+{
+    if (value < 0)
+    {
+        log.WriteError("Value should be larger than 0!\n");
+        return -1;
+    }
+    return sqrt(value);
+}
+{%endhighlight%}
+
+`MySqrt`的第二个参数既可以传入一个`FileErrorLog`对象（error log存于文件中）；也可以传入`ScreenErrorLog`对象（error log打印至屏幕）；抑或是其他继承自`IErrorLog`的子类的对象。
+
+
 
 
 
