@@ -106,7 +106,7 @@ int main()
 
 ## 2.2 cin的其他成员函数
 
-1. `>>` 不会保存输入字符串中的空格（blanks, tab, newline）
+1. `>>` 遇到字符串中的空格（blanks, tab, newline）就停止读取，并且不会保存输入这个空格；
 2. `cin.get(char&)` 用于读取一个字符存于char变量中
 3. `cin.get(char *buf, int limit)` 用于读取最多*limit-1*个字符存于buf中，然后在buf中补上EOF。
    不过，buf不会读取输入流中的换行符，并且在遇到换行符的时候就停止输入，返回。这会导致后续的对该输入流的`get`读取立即返回，因为第一个字符就是换行符。例如：
@@ -280,7 +280,7 @@ int main()
 |Manipulator|Meaning
 |:-|:-|
 |boolalpha|布尔值输出为"true" or "false"
-|noboolalpha|布尔值输出为 0 or 1
+|noboolalpha|布尔值输出为 0 or 1(default)
 |===
 
 ### 3.2.2 正数"+"号显示
@@ -321,7 +321,7 @@ int main()
 |---
 | Group | Flag | Meaning |
 |:-|:-|:-|
-|basefield| dec | 十进制显示整数
+|basefield| dec | 十进制显示整数(default)
 |basefield| hex | 十六进制显示整数
 |basefield| oct | 八进制显示整数
 |basefield| (none) | 按照整数开头的字符来决定(0,none,0x)
@@ -353,7 +353,7 @@ int main()
 |scientific|使用科学技术发显示浮点数
 |showpoint|总是显示小数点和后面的0
 |noshowpoint|只显示有效数，如果小数点后没有0则不显示小数点
-|setprecision(int)|
+|setprecision(int)|设置精度(定义于：iomanip)
 |===
 
 |---
@@ -362,3 +362,157 @@ int main()
 |precision()|返回当前的精度
 |precision(int)|设置精度并且返回之前的精度
 |===
+
+如果设置了fixed或者scientific，precision会决定小数点后的个数。如果precision少于实际的有效位数，显示的数字会被rounded.
+
+如果既没有设置fixed，又没有设置scientific，precision会决定有多少有效数会被显示（包括整数部分）。同样，如果precision少于实际的有效位数，显示的数字会被rounded.
+
+### 3.2.6 宽度，填充字符，对齐
+
+当我们输出的时候，默认情况下只会输出要输出的内容。有时候，我们希望输出的内容是向左对齐或者向右对齐的。这时，首先需要定义一个_field width_, 它定义了输出内容的总宽度。如果，实际的输出内容小于这个宽度，那么我们可以设置其左右对齐；否则，输出内容也不会被截断，仅仅是无视这个设置的_field width_而已。
+
+|---
+|Group|Flag|Meaning|
+|:-|:-|:-|
+|adjustfield|internal|数字：符号左对齐；值右对齐|
+|adjustfield|left|左对齐|
+|adjustfield|right|右对齐(default)|
+|===
+
+|---
+|Manipulator|Meaning
+|:-|:-
+|internal|数字：符号左对齐；值右对齐|
+|left|左对齐|
+|right|右对齐|
+|setfill(char)|设置输入的参数作为填充字符(定义于：iomanip)
+|setw(int)|设置输入和输出的宽度(定义于：iomanip)
+|| - 输出：如果实际长度更长，不会被截断
+|| - 输入：如果实际长度更长，则剩余的内容会在下一次读取
+|===
+
+|---
+|Member function|Meaning
+|:-|:-
+|fill()|返回当前的填充字符
+|fill(char)|设置填充字符并返回之前的字符
+|width()|返回当前宽度
+|width(int)|设置宽度并返回之前的宽度
+|===
+
+要是用这里的formater，必须记得先调用`setw(int)`或者`width(int)`设置_field width_. 由于`setw(int)`或者`width(int)`只影响下一个输出语句，因此需要反复的调用。
+
+# 4. 面向string的流
+
+之前提到，都是往cout写或者从cin读。此外，还有被称为**string stream**的一组类可以允许你使用`<<`和`>>`来操作string. 
+
+与istream和ostream一样，string stream也提供了buffer来保存流中的数据。不同的是，stream string并不是与I/O通道（例如，键盘，显示器等）相连的。stream string的其中一个主要作用是用来缓存将要被显示的数据，或者逐行地处理输入。
+
+C++中有6个不同的string stream 类：
+
+1. istringstream (继承自istream)
+2. ostringstream（继承自ostream）
+3. stringstream（继承自iostream）
+4. wistringstream 
+5. wostringstream 
+6. wstringstream
+
+前三个类适用于读写正常宽度的string；后三个用于读写宽字符的string. 它们都在<sstream>头文件中声明。
+
+## 4.1 读取和写入
+
+有两种方式将数据写入string stream中:
+
+1. 使用`<<`操作符：
+
+        stringstream ss;
+        ss << "Hello";
+
+2. 使用`str(std::string)`成员函数啦设置buffer中的值：
+
+        stringstream ss;
+        ss.str("Hello");
+
+类似地，有两种方式读取string stream中的值：
+
+1. 使用`>>`操作符：
+
+
+        stringstream ss;
+        string str;
+
+        ss << "Hello World!";
+        ss >> str;
+        cout << str << endl;
+        ss >> str;
+        cout << str << endl;
+
+   输出：
+
+        Hello
+        World!
+
+
+2. 使用`str()`成员函数:
+
+        stringstream ss;
+        ss << "hello";
+        cout << ss.str();
+
+
+注意，`>>`被调用后，值会从流中被读走。而`str()`则仅仅是返回当前buffer中的值。
+
+## 4.2 string和数字间的转换
+
+由于`>>`和`<<`内部针对各种基本数据类型都有相应的处理，因此我们可以利用他们来对string和数字进行互相转换。
+
+1. 数字转string:
+
+        #include <iostream>
+        #include <sstream>
+
+        int main()
+        {
+            using namespace std;
+            stringstream ss;
+            int nValue = 12345;
+            double dValue = 67.89;
+            ss << nValue << " " << dValue;
+
+            string strValue1, strValue2;
+            ss >> strValue1 >> strValue2;
+            cout << strValue1 << " " << strValue2 << endl;
+        }
+
+   输出：`12345 67.89`
+
+2. string转为数字：
+
+
+        #include <iostream>
+        #include <sstream>
+
+        int main()
+        {
+            using namespace std;
+            stringstream ss;
+            ss << "12345  67.89";
+            int nValue;
+            double dValue;
+
+            ss >> nValue >> dValue;
+            cout << nValue << " " << dValue << endl;
+        }
+  
+   输出：`12345 67.89`
+
+## 4.3 清空string stream buffer
+
+有多种方式可以清空string stream buffer:
+
+1. `ss.str("")`
+2. `ss.str(std::string())`
+3. `ss.clear()` 这个成员函数还会将stream的state设为OK, 清空error flags.
+
+
+
