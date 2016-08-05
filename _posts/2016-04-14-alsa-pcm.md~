@@ -266,7 +266,7 @@ ALSA PCM设备对于硬件参数，使用了一种"逐步限制"的机制(refine
                                     这正好相反...(黑人问号脸) 所以这个dir参数还是不用为妙！
 
    				             
-    snd_pcm_hw_params_test_xxx: 测试在当前参数空间内，某个硬件参数是否可以被设置
+    snd_pcm_hw_params_test_xxx: 测试在硬件的当前参数空间内，某个硬件参数是否可以被设置
     snd_pcm_hw_params_can_xxx: 测试当前硬件是否支持某种功能
 
 ### 5.2 rate/buffer/period的单位
