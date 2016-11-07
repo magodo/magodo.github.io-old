@@ -136,3 +136,9 @@ NVIDIA的Optimus技术允许集成GPU与独立的NVIDIA GPU被笔记本电脑一
 这下，`# optirun glxspheres64` 可以跑了
 
 
+现有问题
+=======
+
+1. ctrl-alt-NUM 切换到虚拟终端显示错误
+2. wifi不能自动连接
+3. 在gnome3上没法打开terminal
