@@ -39,6 +39,33 @@ BIOS设置
 
     mei_wdt mei::xxxxxx: Could not register event ret=-22
 
+桌面环境
+--------
+
+### 安装xorg
+
+1. `# pacman -S xorg-server`
+2. `# pacman -S xorg-xinit`
+
+  * 创建`~/.xserverrc`:
+  
+      #! /bin/sh
+      exec /usr/bin/Xorg -nolisten tcp "$@" vt$XDG_VTNR
+
+  * `# cp /etc/X11/xinit/xinitrc ~/.xinitrc`
+
+  测试：
+
+  * `# pacman -S xorg-xclock xterm`
+  * `# startx`
+
+### 安装gnome
+
+1. `# pacman -S gnome3`
+2. 按照[wiki](https://wiki.archlinux.org/index.php/GNOME), 配置成手动启动: 在`~/.xinitrc`中，把下面的部分从`twm &`开始都注释，然后加上`exec gnome-session`
+
+
+
 显卡驱动
 --------
 
@@ -93,18 +120,19 @@ NVIDIA的Optimus技术允许集成GPU与独立的NVIDIA GPU被笔记本电脑一
     nouveau:02:00.0: DRM: Pointer to TMDS table invalid
     nouveau 0000:02:00.0: DRM: Pointer to flat panel table invalid
 
-这时`lspci`一下可以看到此时NVIDIA GPU的kernel modules用的是: nouveau, nvidia_drm, nvidia.
-
 接下来，我们要检查一下bumblebee是否工作。安装`mesa-demos`，并且执行`glxgears`:
 
-    # optirun glxgears -info
+    # optirun glxspheres64
 
 然后，我就遇到了如下的问题：
 
 [[ERROR]Cannot access secondary GPU: No devices detected](https://wiki.archlinux.org/index.php/bumblebee#.5BERROR.5DCannot_access_secondary_GPU:_No_devices_detected)
 
-目前还卡在这里。
+这里的话，按照wiki上面是说的，在`/etc/bumblebee/xorg.conf.nvidia`中，把`BusID`那行去注释，然后设上N卡的BusID（`# lspci | grep 3D`），在我这里得到的是`02:00.0`。这里有两点要注意：
 
+1. 写到文件里的时候把最后的`.`改成`:`
+2. `lspci`的输出是16进制的，而写到文件里的应该是10进制的
 
+这下，`# optirun glxspheres64` 可以跑了
 
 
