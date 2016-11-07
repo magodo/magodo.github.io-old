@@ -24,7 +24,7 @@ BIOS设置
 使用脚本安装
 ------------
 
-详情请参见[这里](https://github.com/magodo/t460p-arc://github.com/magodo/t460p-arch)
+详情请参见[这里](https://github.com/magodo/t460p-arch)
 
 
 安装完之后的第一次登录
