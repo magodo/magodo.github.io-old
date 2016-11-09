@@ -172,7 +172,43 @@ GDM允许自动启动图形服务，也提供图形化登录. 在安装了`gnome
 如果想让新用户有`sudo`权限，执行`# visudo`进行配置。例如，由于*magodo*在`wheel`这个group里，我就在`visudo`里把`%wheel AA=(ALL) ALL`这行去注释了。表示`wheel`这个group里的用户需要输入密码来执行`sudo`指令。
 
 
-6. Trouble Shooting
+6 Network Manager
+==================
+
+安裝以下包：
+
+* `networkmanager`
+* `network-manager-applet`
+* `dhclient`
+* `rp-pppoe`
+
+接着，enable NetworkManager:
+
+    systemctl enable NetworkManager.servie
+
+
+7 中文支持
+==========
+
+包括中文的顯示和輸入
+
+### 7.1 中文字體的安裝
+
+在[這裏](https://wiki.archlinux.org/index.php/fonts#Chinese.2C_Japanese.2C_Korean.2C_Vietnamese)列出了arch支持的中文字體包,一開始我只安裝了一個字體，貌似由於不同軟件對字體的支持不同（也許是outline和bitmap的區別吧），所以最好多安裝幾個字體。總之，我是把除了AUR之外的官方包都裝了。
+
+### 7.2 中文字體的輸入
+
+安裝`ibus`和`ibus-rime`。然后，在`$HOME/.bashrc`中加入如下內容：
+
+    export GTK_IM_MODULE=ibus
+    export XMODIFIERS=@im=ibus
+    export QT_IM_MODULE=ibus
+
+執行`ibus-setup`對ibus進行配置。然后，在*setting*->*Region & Language*下的*input sources*中加入Other->Chinese(Rime)。重啓即可。
+
+我不知道爲啥我的輸入法都是繁體字，有待研究下。
+
+8 Trouble Shooting
 =======================
 
 1. ctrl-alt-NUM 切换tty显示混乱
@@ -186,8 +222,6 @@ GDM允许自动启动图形服务，也提供图形化登录. 在安装了`gnome
 3. chromium用root执行会crash (` [0420/105918:FATAL:setuid_sandbox_client.cc(126)] Check failed: IsFileSystemAccessDenied().`)
 
   chromium貌似就是不准root启动，详情请见[这里](https://bbs.archlinux.org/viewtopic.php?id=196353)
-
-4. wifi不能自动连接
 
 
 
