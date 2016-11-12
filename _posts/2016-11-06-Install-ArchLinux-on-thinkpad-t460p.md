@@ -14,20 +14,20 @@ Table of Content
 {:toc}
 ***
 
-1. BIOS设置
+1 BIOS设置
 -------
 
 1. Security -> Secure Boot -> Secure Boot: Disabled
 2. Startup -> EFI/Legacy Boot: UEFI Only
 3. Config -> Display -> Total Graphics Memory: 512MB
 
-2. 使用脚本安装基础系统
+2 使用脚本安装基础系统
 ------------
 
 详情请参见[这里](https://github.com/magodo/t460p-arch)
 
 
-3. 安装完之后的第一次登录
+3 安装完之后的第一次登录
 ----------------------
 
 第一次登录之后，会发现终端输出类似如下的错误：
@@ -44,7 +44,7 @@ Table of Content
 这个貌似网上也找不到什么线索，不过貌似没有什么影响的样子
 
 
-4. 显卡驱动
+4 显卡驱动
 --------
 
 要想安装桌面环境，我们先把显卡配置好。thinkpad t460p有两个显卡设备：
@@ -129,7 +129,7 @@ NVIDIA的Optimus技术允许集成GPU与独立的NVIDIA GPU被笔记本电脑一
 
 除了wiki上说到的原因外，很可能是因为你在非桌面环境下执行了`optirun`的缘故。所以，先要整个DE.
 
-5. 桌面环境
+5 桌面环境
 --------
 
 接着，我们可以安装桌面环境(DE)啦～这个的话有很多选择，我先选了比较大众的`gnome3`试试水
