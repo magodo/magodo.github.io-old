@@ -547,12 +547,12 @@ void *thread(void *vargp){
 
 The output is:
 
-    Hello from thread 2
-    Hello from thread 1
     Hello from thread 3
     Hello from thread 0
+    Hello from thread 0
+    Hello from thread 0
 
-This incorrect result is because of _race_ between line 14 and line 21.
+This incorrect result is because of _race_ between line 13 and line 20.
 
 To eliminate the race, we can use one of following 2 approaches:
 
