@@ -115,5 +115,7 @@ Manuel Amador Briz 提供了一幅很详细的图示：
 # 引用
 
 [1] [PulseAudio官网 - User](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/)
+
 [2] [PulseAudio ArchWiki](https://wiki.archlinux.org/index.php/PulseAudio)
+
 [3] [PulseAudio WikiPedia](https://en.wikipedia.org/wiki/PulseAudio)
