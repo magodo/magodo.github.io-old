@@ -161,3 +161,7 @@ Table of Content
     address sizes   : 40 bits physical, 48 bits virtual
 
 虚拟内存空间用了48位。可是即使将将[63-48]位清0，这个地址还是不对：`0xfffff7fd96a0`. 所以最后都没搞明白。。。
+
+# Reference
+
+[1] [Debugging __thread variables](https://www.technovelty.org/linux/debugging-__thead-variables-from-coredumps.html)
