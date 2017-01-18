@@ -1,6 +1,6 @@
 ---
 layout: "post"
-title: "Setup flaskbb on Ubuntu 12.04 LTS"
+title: "flaskbb-ubuntu"
 categories:
 - "python"
 ---
@@ -8,7 +8,7 @@ categories:
 <!--more-->
 
 ***
-Table of Content
+Table of Conetent
 
 * TOC
 {:toc}
