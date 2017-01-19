@@ -128,17 +128,153 @@ flaskbb提供了2个配置文件可供选择，它们都在 `flaskbb/flaskbb/con
 
 `flaskbb.ini` 的内容如下：
 
+    ##
+    # This file is the configuration for uWSGI
+    # 
+    # Start uWSGI server with command:
+    #
+    # $ uwsgi --ini flaskbb_wsgi.ini
+    #
+    # alternatively, you can start it in root priviledge,
+    # in which case, the 'uid'/'gid' keys are considered
+    #
+    # For good performance, it should be used together with 
+    # Nginx, and the "socket" key should be set. Otherwise,
+    # comment "socket" and uncomment "http".
+
+    [uwsgi]
+
+    # set virtualenv and project base directory
+    base = /srv/www/flaskbb
+    virtualenv = /srv/www/flaskbb/.virtualenvs/flaskbb
+    pythonpath = %(base)
+
+    # module:callable
+    module = wsgi:flaskbb
+
+    # set uid and gid to "www-data", which
+    # is the same u/gid nginx uses.
+    # This take effects only when "uwsgi" is launched
+    # by root.
+    uid = www-data
+    gid = www-data
+
+    # Tell uWSGI to start up in master mode
+    # and spawn five worker processes to serve
+    # actual requests
+    master = true
+    processes = 5
+
+    # Socket used to communicate with Nginx
+    # Nginx handles actual client connections,
+    # which will then pass requests to uWSGI.
+
+    socket = /tmp/flaskbb.sock
+    chmod-socket = 600
+    # clean up the socket when the process stops
+    vacuum = true
+
+    # This can help ensure that the init system and
+    # uWSGI have the same assumptions about what each
+    # process signal means. Setting this aligns the
+    # two system components, implementing the expected behavior
+    die-on-term = true
+
+    # By default, uWSGI speaks using the uwsgi protocol,
+    # a fast binary protocol designed to communicate with other servers.
+    # Nginx can speak this protocol natively, so it's better to use this
+    # than to force communication by HTTP.
+
+
 值得注意的是，由于配置文件中指定了`uid` 和 `gid` ，所以 `uwsgi` 需要以root权限执行。
 
-# 4 Nginx
+在正式部署到服务器的时候，我们不应该每次都手动执行 `uwsgi` 来启动，而是应该以某种进程管理系统来控制它的自动启动，错误恢复，关机时关闭等操作。下一节介绍的 `supervisor` 就是用于此目的一种跨平台进程管理系统。
 
-## 4.1 安装
+# 4 Supervisor
+
+Supervisor是一个用于在类Unix系统中控制和监视进程的一个服务器/客户端形式的系统，类似于 `systemd`, `launchd` 之类的 `init system` 但并不是它们的替代品。
+
+Supervisor和其他进程一样，在系统启动时被运行。同时，Supervisor会根据用户的配置，将指定的程序相应地运行起来。
+
+## 4.1 组件
+
+### supervisord
+
+Supervisor的服务端进程。它负责启动，响应客户端程序，在出错的时候重启客户端程序，以及将客户端程序的标准输出和错误记录到日志中。
+
+### supervisorctl
+
+命令行工具，用于控制客户端程序。它是通过UDS(Unix domain socket)或者TCP socket的方式supervisord进行通信。
+
+### Web Server
+
+Supervisor提供了一个功能类似 `supervisorctl` 的网页界面。通过访问服务端的URL(e.g. `http://localhost:9001/` )，用户可以查看和控制客户端程序的状态。
+
+这个组件工作的前提条件是配置文件中定义了 `[inet_http_server]` 段。
+
+### XML-RPC Interface
+
+启动上面那个Web UI的HTTP服务器同时启动了一个 XML-RPC 接口服务，它可以用于查询和控制supervisor和它启动的程序。
+
+## 4.2 安装Supervisor
+
+安装用的是发行版提供的包：
+
+    $ sudo apt-get install supervisor
+
+安装完毕后，可以查看下 `supervisor` 这个service是否被enable了：
+
+    $ find /etc/rc* -name "*supervisor*"
+    /etc/rc0.d/K20supervisor
+    /etc/rc1.d/K20supervisor
+    /etc/rc2.d/S20supervisor
+    /etc/rc3.d/S20supervisor
+    /etc/rc4.d/S20supervisor
+    /etc/rc5.d/S20supervisor
+    /etc/rc6.d/K20supervisor
+
+
+## 4.3 配置文件
+
+安装完毕后，可以在命令行中执行 `echo_supervisord_conf`. 它会打印出一个配置文件的样本。我们可以利用这个样本来创建。不过arch版本的包中已经自带了配置文件，因此使用默认的配置文件。
+
+具体的配置项还请参考 (官方文档)[http://supervisord.org/configuration.html].
+
+## 4.4 运行程序
+
+supervisord会在启动的时候解析配置文件，其中关于要启动哪些客户端程序的信息记录在配置文件中的 `[program:xxx]` 段（其中的 `xxx` 准确地应该称为 *同类别程序组*  (详见)[http://supervisord.org/configuration.html#program-x-section-settings]
+
+在添加某个程序的时候，用户可以直接修改配置文件，不过这是不推荐的。推荐的做法是在配置文件中加入一个 `[include]` 段，在其中指定需要append的文件的路径（模式）。例如，arch的supervisor包中的配置文件有如下配置：
+
+    [include]
+    files = /etc/supervisor.d/*.conf
+
+假设我需要运行 `uwsgi`，那么我可以在 `/etc/supervisor.d/` 中创建文件 `uwsgi.conf` ：
+
+    [program:uwsgi]
+    command=/usr/local/bin/uwsgi --emperor /etc/uwsgi/apps-enabled
+    stopsignal=QUIT
+    autostart=true
+    autorestart=true
+    redirect_stderr=true
+
+这里如果不指定 `user` ，uwsgi进程将会以supervisord的uid 启动，在这里是以root的权限启动的。因此，在之后uwsgi的配置文件中可以调用 `setuid()` / `setgid()` 将uid/gid设置为配置的用户（www-data）.
+
+配置完毕后，执行:
+
+    $ sudo service supervisor restart
+
+来重启 `supervisor`。不过此时由于Nginx还没有配置完成，所以即使启动了uwsgi，用户还无法通过浏览器访问它。
+
+# 5 Nginx
+
+## 5.1 安装
 
 使用发行版的包安装：
 
     $ sudo apt-get install nginx
 
-## 4.2 启动
+## 5.2 启动
 
 因为现在公司里的运行环境是Ubuntu12.04LTS, 使用的是sysv init初始化系统，所以需要执行：
 
@@ -149,7 +285,7 @@ flaskbb提供了2个配置文件可供选择，它们都在 `flaskbb/flaskbb/con
 
 验证Nginx是否正确启动，打开浏览器，输入你的eth0的ip地址，页面上会出现类似 **welcome nginx** 之类的字眼就代表安装成功。
 
-## 4.3 配置flaskbb
+## 5.3 配置flaskbb
 
 根据flaskbb官网的建议配置，做一点微小的改动即可，大概包括：
 
@@ -159,17 +295,50 @@ flaskbb提供了2个配置文件可供选择，它们都在 `flaskbb/flaskbb/con
 
 具体配置文件如下：
 
+    server {
+        listen 80;
+        server_name localhost;
+
+        access_log /var/log/nginx/access.forums.flaskbb.log;
+        error_log /var/log/nginx/error.forums.flaskbb.log;
+
+        location / {
+            try_files $uri @flaskbb;
+        }
+
+        # Static files
+        location /static {
+           alias /srv/www/flaskbb/flaskbb/static/;
+        }
+
+        location ~ ^/_themes/([^/]+)/(.*)$ {
+            alias /srv/www/flaskbb/flaskbb/themes/$1/static/$2;
+        }
+
+        # robots.txt
+        location /robots.txt {
+            alias /srv/www/flaskbb/flaskbb/static/robots.txt;
+        }
+
+        location @flaskbb {
+            include uwsgi_params;
+            uwsgi_pass unix:/tmp/flaskbb.sock;
+        }
+    }
+
 文件路径为 `/etc/nginx/sites-available/flaskbb`。同样，需要创建一个link指向该文件，link为 `/etc/nginx/sites-enabled/flaskbb`
 
 配置完毕后，别忘了重启nginx service:
 
     $ sudo service nginx restart 
 
-# 5 flaskbb bug fix
+然后，你应该可以通过访问你在配置文件中配置的URL(localhost)来访问flaskbb了！
+
+# 6 flaskbb bug fix
 
 flaskbb本身好像没人维护了的样子，而它官网又说是under development，不建议使用production的配置。所以可以预料的到，有很多坑在里面。这里我列举了一些 *可能* 的问题。
 
-# 6 TODO
+# 7 TODO
 
 这里列了一些按如上配置之后运行中的错误/警告，暂时还不知道原因，需要进一步调查。
 
@@ -179,6 +348,3 @@ flaskbb本身好像没人维护了的样子，而它官网又说是under develop
     added /srv/www/flaskbb/ to pythonpath.
     Error opening file for reading: Permission denied
     ...
-
-
-
