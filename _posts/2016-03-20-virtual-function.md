@@ -28,7 +28,10 @@ class Animal
     protected:
         std::string m_name;
 
-        /* 这里构造函数使用protected是为了防止别人直接创建Animal对象 */
+        /* 这里构造函数使用protected是为了:
+           1. 防止实例化Animal对象
+           2. 允许子类继承Animal（如果是private，则无法继承Animal）
+        */
         Animal(std::string name)
             :m_name(name)
         {}
@@ -510,7 +513,7 @@ int main()
 }
 {%endhighlight%}
 
-首先，*pClass*是指向Base的指针，因此它只指向i*cClass*中Base的部分。同时，由于`*__vptr`是Base的一部分，因此，*pClass*可以访问的到。然而，因为*cClass*中的`*__vptr`虽然继承自基类，但是其值实际指向D1的虚函数表。因此，最终*pClass*是指向D1的虚函数表，因此调用的是D1虚函数表中的function1，也即D1::function1.
+首先，*pClass*是指向Base的指针，因此它只指向*cClass*中Base的部分。同时，由于`*__vptr`是Base的一部分，因此，*pClass*可以访问的到。然而，因为*cClass*中的`*__vptr`虽然继承自基类，但是其值实际指向D1的虚函数表。因此，最终*pClass*是指向D1的虚函数表，因此调用的是D1虚函数表中的function1，也即D1::function1.
 
 # 5. 抽象函数 抽象基类 接口类
 
