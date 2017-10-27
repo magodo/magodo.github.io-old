@@ -171,8 +171,12 @@ Three codes are mentioned:
 
     A single **parity bit** is appended to the sent data.
 
-    If one block only has one parity bit, and there is long burst error garbling the block, then the probability of detecting the error is only 50%. We can regard each block to be a n\*k rectangle, then we can either append one parity bit for each row (i.e. up to k bit errors) or *interleave* the parity bit for each column. In this case, we can improve the detection rate in long burst case.
+    If one block only has one parity bit, and there is long burst error garbling the block, then the probability of detecting the error is only 50%. We can regard each block to be a n\*k rectangle, then we can either append one parity bit for each row (i.e. up to k bit errors) or *interleave* the parity bit for each column. In this case, we can improve the detection rate in long burst case (but still error-prone)..
 
 2. Checksums
 
 3. Cyclic Redundancy Checks (CRCs)
+
+    Check out the [Painless guide to CRC](http://ross.net/crc/crcpaper.html).
+
+## 3.3 Elementary Data Link Protocols
