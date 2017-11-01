@@ -171,7 +171,7 @@ Three codes are mentioned:
 
     A single **parity bit** is appended to the sent data.
 
-    If one block only has one parity bit, and there is long burst error garbling the block, then the probability of detecting the error is only 50%. We can regard each block to be a n\*k rectangle, then we can either append one parity bit for each row (i.e. up to k bit errors) or *interleave* the parity bit for each column. In this case, we can improve the detection rate in long burst case (but still error-prone)..
+    If one block only has one parity bit, and there is long burst error garbling the block, then the probability of detecting the error is only 50%. We can regard each block to be a nxk rectangle, then we can either append one parity bit for each row (i.e. up to k bit errors) or *interleave* the parity bit for each column. In this case, we can improve the detection rate in long burst case (but still error-prone)..
 
 2. Checksums
 
@@ -180,3 +180,245 @@ Three codes are mentioned:
     Check out the [Painless guide to CRC](http://ross.net/crc/crcpaper.html).
 
 ## 3.3 Elementary Data Link Protocols
+
+### 3.3.1 A Utopian Simplex Protocol
+
+{% highlight C linenos %}
+
+    /* Protocol 1 (Utopia) provides for data transmission in one direction only, from
+    sender to receiver. The communication channel is assumed to be error free
+    and the receiver is assumed to be able to process all the input infinitely quickly.
+    Consequently, the sender just sits in a loop pumping data out onto the line as
+    fast as it can. */
+    typedef enum {frame arrival} event type;
+    #include "protocol.h"
+    void sender1(void)
+    {
+        frame s; /* buffer for an outbound frame */
+        packet buffer; /* buffer for an outbound packet */
+        while (true) {
+        from_network_layer(&buffer); /* go get something to send */
+        s.info = buffer; /* copy it into s for transmission */
+        to_physical_layer(&s); /* send it on its way */
+        } /* Tomorrow, and tomorrow, and tomorrow,
+            Creeps in this petty pace from day to day
+            To the last syllable of recorded time.
+            – Macbeth, V, v */
+    }
+
+    void receiver1(void)
+    {
+        frame r;
+        event_type event; /* filled in by wait, but not used here */
+        while (true) {
+        wait_for_event(&event); /* only possibility is frame arrival */
+        from_physical_layer(&r); /* go get the inbound frame */
+        to_network_layer(&r.info); /* pass the data to the network layer */
+        }
+    }
+{% endhighlight %}
+
+### 3.3.2 A Simplex Stop-and-Wait Protocol for an Error-Free Channel
+
+This takes flow control into consideration for preventing the sender from flooding the receiver with frames faster than the latter is able to process them.
+
+{% highlight C linenos %}
+
+    /* Protocol 2 (Stop-and-wait) also provides for a one-directional flow of data from
+    sender to receiver. The communication channel is once again assumed to be error
+    free, as in protocol 1. However, this time the receiver has only a finite buffer
+    capacity and a finite processing speed, so the protocol must explicitly prevent
+    the sender from flooding the receiver with data faster than it can be handled. */
+    typedef enum {frame arrival} event type;
+    #include "protocol.h"
+    void sender2(void)
+    {
+        frame s; /* buffer for an outbound frame */
+        packet buffer; /* buffer for an outbound packet */
+        event_type event; /* frame arrival is the only possibility */
+        while (true) {
+        from_network_layer(&buffer); /* go get something to send */
+        s.info = buffer; /* copy it into s for transmission */
+        to_physical_layer(&s); /* bye-bye little frame */
+        wait_for_event(&event); /* do not proceed until given the go ahead */
+        }
+    }
+    void receiver2(void)
+    {
+        frame r, s; /* buffers for frames */
+        event_type event; /* frame arrival is the only possibility */
+        while (true) {
+        wait_for_event(&event); /* only possibility is frame arrival */
+        from_physical_layer(&r); /* go get the inbound frame */
+        to_network_layer(&r.info); /* pass the data to the network layer */
+        to_physical_layer(&s); /* send a dummy frame to awaken sender */
+        }
+    }
+{% endhighlight %}
+
+### 3.3.3 A Simplex Stop-and-Wait Protocol for a Noisy Channel
+
+Protocols in which the sender waits for a positive ack before advancing to the next dasta item are often called **ARQ(Automatic Repeat reQuest)** or **PAR(Positive Ack with Retransmission)**.
+
+{% highlight C linenos %}
+
+    /* Protocol 3 (PAR) allows unidirectional data flow over an unreliable channel. */
+    #define MAX SEQ 1 /* must be 1 for protocol 3 */
+    typedef enum {frame_arrival, cksum_err, timeout} event_type;
+    #include "protocol.h"
+    void sender3(void)
+    {
+        seq_nr next_frame_to_send; /* seq number of next outgoing frame */
+        frame s; /* scratch variable */
+        packet buffer; /* buffer for an outbound packet */
+        event_type event;
+        next_frame_to_send = 0; /* initialize outbound sequence numbers */
+        from_network_layer(&buffer); /* fetch first packet */
+        while (true) {
+            s.info = buffer; /* construct a frame for transmission */
+            s.seq = next_frame_to_send; /* insert sequence number in frame */
+            to_physical_layer(&s); /* send it on its way */
+            start_timer(s.seq); /* if answer takes too long, time out */
+            wait_for_event(&event); /* frame_arrival, cksum_err, timeout */
+            if (event == frame_arrival) {
+                from_physical_layer(&s); /* get the acknowledgement */
+                if (s.ack == next_frame_to_send) {
+                stop_timer(s.ack); /* turn the timer off */
+                from_network_layer(&buffer); /* get the next one to send */
+                inc(next_frame_to_send); /* invert next frame to send */
+                }
+            }
+        }
+    }
+    void receiver3(void)
+    {
+        seq_nr frame_expected;
+        frame_r, s;
+        event_type event;
+        frame_expected = 0;
+        while (true) {
+            wait_for_event(&event); /* possibilities: frame_arrival, cksum_err */
+            if (event == frame_arrival) { /* a valid frame has arrived */
+                from_physical_layer(&r); /* go get the newly arrived frame */
+                if (r.seq == frame_expected) { /* this is what we have been waiting for */
+                    to_network_layer(&r.info); /* pass the data to the network layer */
+                    inc(frame_expected); /* next time expect the other sequence nr */
+                }
+                s.ack = 1 − frame_expected; /* tell which frame is being acked */
+                to_physical_layer(&s); /* send acknowledgement */
+            }
+        }
+    }
+{% endhighlight %}
+
+## 3.4 Sliding Window Protocols
+
+For bidirectional communication via one link, each frame's header could contain a *kind* field indicating if the frame is data or ack.
+
+* **piggybacking**
+
+    Improvement of above scheme. When data frame arrives, instead of immediately sending a separate ack, the receiver restrains itself and waits until the network layer passes it the next packet. The ack is attached to the outgoing data frame (using the *ack* field in the frame header). 
+
+    It is not always the case receiver should wait. The receiver should start a timer to wait for next packet from network layer. If the new packet arrives quickly, the ack is piggybacked onto it. Otherwise, if packet arrived by the end of this time period, then data link layer just sends the separate ack to sender side.
+
+* **sliding window protocol**
+
+    The sender maintains a set of sequence numbers corresponding to frames permitted to send. These are frames that have been sent or can be sent but are as yet not acked. Whenever a new packet arrives from network layer, it is given the next highest sequence number, and the upper edge of the window is advanced by one. When an ack comes in, the lower edge is advanced by one.
+
+    The receiver maintains a set of sequence numbers corresponding to frames permitted to receive. When a frame whose sequence number is equal to the lower edge of the window is received, it is passed to the network layer and the window is rotated by one. Any frame falling outisde the window is discarded. In all of these cases, a subsequent ack is generated to the sender.
+
+### 3.4.1 A One-Bit Sliding Window Protocol
+
+{% highlight C linenos %}
+
+    /* Protocol 4 (Sliding window) is bidirectional. */
+    #define MAX SEQ 1 /* must be 1 for protocol 4 */
+
+    typedef enum {frame arrival, cksum err, timeout} event type;
+    #include "protocol.h"
+
+    void protocol4 (void)
+    {
+        seq_nr next_frame_to_send; /* 0 or 1 only */
+        seq_nr frame_expected; /* 0 or 1 only */
+        frame r, s; /* scratch variables */
+        packet buffer; /* current packet being sent */
+        event_type event;
+
+        next_frame_to_send = 0; /* next frame on the outbound stream */
+        frame_expected = 0; /* frame expected next */
+        from_network_layer(&buffer); /* fetch a packet from the network layer */
+        s.info = buffer; /* prepare to send the initial frame */
+        s.seq = next_frame_to_send; /* insert sequence number into frame */
+        s.ack = 1 − frame_expected; /* piggybacked ack */
+        to_physical_layer(&s); /* transmit the frame */
+        start_timer(s.seq); /* start the timer running */
+
+        while (true) {
+            wait_for_event(&event); /* frame arrival, cksum err, or timeout */
+            if (event == frame_arrival) { /* a frame has arrived undamaged */
+
+                from_physical_layer(&r); /* go get it */
+
+                if (r.seq == frame_expected) { /* handle inbound frame stream */
+                    to_network_layer(&r.info); /* pass packet to network layer */
+                    inc(frame_expected); /* invert seq number expected next */
+                }
+
+                if (r.ack == next_frame_to_send) { /* handle outbound frame stream */
+                    stop_timer(r.ack); /* turn the timer off */
+                    from_network_layer(&buffer); /* fetch new pkt from network layer */
+                    inc(next_frame_to_send); /* invert sender’s sequence number */
+                }
+            }
+            s.info = buffer; /* construct outbound frame */
+            s.seq = next_frame_to_send; /* insert sequence number into it */
+            s.ack = 1 − frame_expected; /* seq number of last received frame */
+            to_physical_layer(&s); /* transmit a frame */
+            start_timer(s.seq); /* start the timer running */
+        }
+    }
+
+{% endhighlight %}
+
+Under normal circumstances, one of the two data link layers goes first and
+transmits the first frame. In other words, only one of the data link layer programs
+should contain the to physical layer and start timer procedure calls outside the
+main loop. As shown in situation (a).
+
+![one-bit sliding window protocol](/images/computer_network/one-bit_slide_window_protocol.bmp)
+
+If A and B simultaneously initiate communication, their first frames
+cross, and the data link layers then get into situation (b). In (a) each frame arrival
+brings a new packet for the network layer; there are no duplicates. In (b) half of
+the frames contain duplicates, even though there are no transmission errors. Similar situations can occur as a result of premature timeouts, even when one side
+clearly starts first. In fact, if multiple premature timeouts occur, frames may be
+sent three or more times, wasting valuable bandwidth.
+
+### 3.4.2 Go-Back-N
+
+Last protocol has low efficiency on bandwidth usage. After improving the bandwidth usage by allowing the sender to tranmist up to *w* frames before blocking (instead of 1) for ack. The theoretical *w* equals to `2*BD+1`, where `BD` equals to: `bandwidth * one-way transit time / bits per frame`.
+
+This method has a serious issue. If a frame in the middle of a long strem is damaged or lost, large numbers of succeeding frames will arrive at the receiver. Two basic apporaches are available to deal with these errors, one is the **go-back-n** (described in this section), the other is called the **selective repeat** (described in next section).
+
+**go-back-n** is for the receiver simply to discard all subsequent frames, sending no ack for the discarded frames. This strategy corresponds to a receive window of size 1.  In other words, the data link layer
+refuses to accept any frame except the next one it must give to the network layer.
+If the sender’s window fills up before the timer runs out, the pipeline will begin to
+empty. Eventually, the sender will time out and retransmit all unacknowledged
+frames in order, starting with the damaged or lost one. This approach can waste a
+lot of bandwidth if the error rate is high.
+
+![go-back-n](/images/computer_network/go-back-n.bmp)
+
+### 3.4.3 Selective Repeat
+
+The other general strategy for handling errors when frames are pipelined is
+called selective repeat. When it is used, a bad frame that is received is discarded,
+but any good frames received after it are accepted and buffered. When the sender
+times out, only the oldest unacknowledged frame is retransmitted. If that frame
+arrives correctly, the receiver can deliver to the network layer, in sequence, all the
+frames it has buffered. Selective repeat corresponds to a receiver window larger
+than 1. This approach can require large amounts of data link layer memory if the
+window is large.
+
+![selective-repeat](/images/computer_network/selective-repeat.bmp)
