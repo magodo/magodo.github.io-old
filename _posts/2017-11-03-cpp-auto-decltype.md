@@ -121,7 +121,76 @@ auto的引入可以让编译器自动推断某个变量的类型，减少程序�
 
 ## 1.3 设计理念
 
-`auto`之所以丢掉`&`和`top-level const/volatile`，是因为即使有一个引用来推断变量的类型，不代表我们实际要的类型是引用（大概率并不是），因此不要`&`; `top-level const`也是同理。
+`auto`之所以丢掉`&`，是因为即使有一个引用来推断变量的类型，不代表我们实际要的类型是引用（大概率并不是），因此不要`&`; `top-level const`也是同理。
+
+# 2. decltype
+
+`auto`可以在编译器能够推断出某个变量的类型的时候用于作为类型来声明那个变量，并且仅此而已。而实际上，很多非变量声明的情况下，编译器在也可以推断出某个希望的类型，例如下面的例子中，希望定义一个由输入参数类型决定的类型:
+
+    template<typename T, typename S>
+    void foo(T lhs, S rhs)
+    {
+        using product_type = ???(lhs * rhs);
+    }
+
+在C++11以前，某些非编译器提供了一些非标准的方法实现了以上的`???`（例如：`typeof`）.
+
+为了提供一个统一的，标准的`typeof`,C++11实现了`decltype`。
+
+另一个`decltype`的适用场景为，希望编译器自动推断出模板函数的返回值，用法如下：
+
+    tempalte<typename T, typename S>
+    auto multiply(T lhs, S rhs) -> decltype(lhs * rhs)
+    { return lhs * rhs; }
+
+可能有人会错误地写成如下形式：
+
+    template<typename T，typename S>
+    decltype(lhs*rhs) multiply(T lhs, S rhs)
+    { return lhs * rhs; }
+
+这是不能通过编译的，原因是`lhs` 和 `rhs`在函数名声明之前是不存在的。
+
+至此，很多人可能会有如下认识：
+
+>>> `decltype` 和 `auto` 一样，差别仅在于前者适用的范围更广。
+
+这实际上是错误的!
+
+## 2.1 decltype 推断过程：情景1
+
+>>> 当`decltype(expr)`中的`expr`是一个不带括号的变量，函数参数，或者类成员变量，那么`decltype(expr)`是那个变量，函数参数，或者类成员变量在源代码中声明的变量。
+
+以下举了几个例子：
+
+    struct S
+    {
+        S(): m_x{42} {}
+        int m_x;
+    };
+
+    int x;
+    const in cx = 42;
+    const int& crx = x;
+    const S* p = new S();
+
+    typedef decltype(x) x_type; // x_type = int
+    auto a = x;                 // a is int
+
+    typedef decltype(cx) cx_type;   // cx_type = const int
+    auto b = cx;                    // b is int
+
+    typedef decltype(crx) crx_type; // crx_type = const int&
+    auto c = crx_type;              // c is int
+
+    typedef decltype(p->m_x) m_x_type; /* m_x_type = int
+                                        * 虽然，p是low-level const指针，但是decltype推导的是
+                                        * 成员变量声明的类型，因此就是int */
+    auto d = p->m_x;    // d is int
+
+## 2.2 decltype 推断过程: 情景2（everything else）
+
+>>> 
  
 # 引用
 
