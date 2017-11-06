@@ -157,7 +157,7 @@ auto的引入可以让编译器自动推断某个变量的类型，减少程序�
 
 这实际上是错误的!
 
-## 2.1 decltype 推断过程：情景1
+## 2.1 decltype 推断过程：情景1 (simple expression)
 
 >>> 当`decltype(expr)`中的`expr`是一个不带括号的变量，函数参数，或者类成员变量，那么`decltype(expr)`是那个变量，函数参数，或者类成员变量在源代码中声明的变量。
 
@@ -188,10 +188,46 @@ auto的引入可以让编译器自动推断某个变量的类型，减少程序�
                                         * 成员变量声明的类型，因此就是int */
     auto d = p->m_x;    // d is int
 
-## 2.2 decltype 推断过程: 情景2（everything else）
+## 2.2 decltype 推断过程: 情景2（complex expression）
 
->>> 
- 
+情景2适用于情景1中提到的三种情况外的的所有情况。不过，要知道它的类型推断过程，需要首先了解`lvalue`, `xvalue`, `prvalue`:
+
+* `lvalue`: 不可移动的对象，其对立面为`rvalue`(即可移动的对象)
+* `xvalue`: `rvalue`中的一种，含有 *identity* （有名右值引用）。包括：
+    
+    * 返回值声明为`rvalue reference`的函数表达式；
+    * 类型转换为`rvalue reference` (e.g. `static_cast<A&&>(a)`)
+    * 一个`xvalue`对象的成员变量 (e.g. `(static_cast<A&&>(a)).m_x`)
+
+* `prvalue`: `rvalue`中除了`xvalue`的。
+
+接下来是`decltype`对于complex expression的推导过程：
+
+>>> 如果 expr 的类型是 T. 当 expr 是 lvalue, decltype(expr) = "T&"; 当 expr 是 xvalue, decltype(expr) = "T&&"; 当 expr 是 prvalue, decltype(expr) = "T".
+
+以下给出一些例子：
+
+    struct S
+    {
+        S():m_x{42} {}
+        int m_x;
+    };
+
+    int x;
+    const int cx = 42;
+    const int& crx = x;
+    const S* p = new S();
+
+    using x_with_parens_type = decltype((x)); // int&
+
+    using cx_with_parens_type = decltype((cx)); // const int&
+
+    using crx_with_parens_type = delctype((crx)); /* const int& + &
+                                                   * according to C++11 reference collapsing rules,
+                                                   * this makes no difference. Hence, const int& */
+
+    using m_x_with_parens_type = decltype((p->m_x)); //  ??? 这个怎么是 const int&
+
 # 引用
 
 [1] [thbecker: "auto and decltype"](http://thbecker.net/articles/auto_and_decltype/)
