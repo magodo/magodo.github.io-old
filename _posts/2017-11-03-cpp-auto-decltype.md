@@ -207,6 +207,8 @@ auto的引入可以让编译器自动推断某个变量的类型，减少程序�
 
 以下给出一些例子：
 
+    /* Parenthesed Expressions */
+
     struct S
     {
         S():m_x{42} {}
@@ -227,6 +229,44 @@ auto的引入可以让编译器自动推断某个变量的类型，减少程序�
                                                    * this makes no difference. Hence, const int& */
 
     using m_x_with_parens_type = decltype((p->m_x)); //  ??? 这个怎么是 const int&
+
+    /* Function Expressions */
+
+    const S foo();
+    using foo_type = decltype(foo()); /* since foo() is a prvalue, decltype doesn't add
+                                       * a reference. Hence, foo_type is "const S" */
+
+    const int& foobar();
+    using foobar_type = decltype(foobar()); /* since foobar() is a lvalue, decltype adds a reference.
+                                             * according to C++11 reference collapsing rules,
+                                             * this makes no difference. Hence, const int& */
+
+    std::vector<int> v{42,43};
+    using iterator_type = decltype(v.begin()); /* since v.begin() is a prvalue, no reference is added.
+                                                * Hence std::vector<int>::iterator. */
+    using ele_type = decltype(v[0]); /* since v[0] is a lvalue(int&), add one reference. 
+                                      * according to c++11 reference collapsing rules, makes no difference.
+                                      * hence int& */
+
+    /* Binary or Ternary Expressions */
+
+    int x{0};
+    int y{0};
+    const int cx{42};
+    const int cy{43};
+    double d1{3.14};
+    double d2{2.72};
+
+    using prod_xy_type = decltype(x*y); /* since x * y is a prvalue, no reference is added. Hence int. */
+    using prod_cxcy_type = decltype(cx*cy); /* since cx*cy is prvalue(int, not const int!),
+                                             * no reference is added. Hence int. */
+    using cond_type = decltype(d1 < d2? d1:d2); /* since the expression is lvalue(double), decltype
+                                                 * will add a reference. Hence double&. */
+    using cond_type_promotion = decltype(x < d1? x:d1); /* since the expression is evaluated to be
+                                                         * (double)(x), which means x is promoted to double,
+                                                         * in which case a temporary will be created. This
+                                                         * temporary is a prvalue. So decltype adds no ref.
+                                                         * Hence double. */
 
 # 引用
 
